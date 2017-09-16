@@ -7440,5 +7440,8 @@ message MetricsEvent {
     ORGASMIC = 1999;
     ORGASMIC_SETTINGS = 2000;
     ORGASMIC_QS_TILES = 2001;
+    // CustomSettings constant
+    CUSTOM_SETTINGS = 2002;
+
   }
 }
