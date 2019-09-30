@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Copyright 2021 Paranoid Android
+    Copyright 2014-2020 Paranoid Android
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 -->
 <resources>
 
-    <!-- Alert Slider -->
-    <java-symbol type="string" name="alert_slider_state_path" />
-    <java-symbol type="string" name="alert_slider_uevent_match_path" />
-    <java-symbol type="bool" name="config_hasAlertSlider" />
-    <java-symbol type="integer" name="config_alertSliderLocation" />
+    <style name="TriStateUiText">
+        <item name="android:textSize">11.0sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
 
 </resources>
