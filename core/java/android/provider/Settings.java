@@ -5206,6 +5206,11 @@ public final class Settings {
          */
         public static final String FP_ERROR_VIBRATE = "fingerprint_error_vib";
 
+        /**
+        * Use doubletap as doze pulse triggers
+        * @hide
+        */
+        public static final String DOZE_TRIGGER_DOUBLETAP = "doze_trigger_doubletap";
 
         /**
          * These are all public system settings
@@ -5264,6 +5269,7 @@ public final class Settings {
             PUBLIC_SETTINGS.add(HAPTIC_FEEDBACK_ENABLED);
             PUBLIC_SETTINGS.add(SHOW_WEB_SUGGESTIONS);
             PUBLIC_SETTINGS.add(VIBRATE_WHEN_RINGING);
+            PUBLIC_SETTINGS.add(DOZE_TRIGGER_DOUBLETAP);
         }
 
         /**
