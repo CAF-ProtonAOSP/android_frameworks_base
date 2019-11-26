@@ -281,6 +281,9 @@
     <!-- Permission to make accessibility service access Bubbles -->
     <uses-permission android:name="android.permission.ADD_TRUSTED_DISPLAY" />
 
+    <!-- DataSwitch tile -->
+    <uses-permission android:name="android.permission.WRITE_APN_SETTINGS" />
+
     <!-- Permission for Smartspace. -->
     <uses-permission android:name="android.permission.MANAGE_SMARTSPACE" />
 
