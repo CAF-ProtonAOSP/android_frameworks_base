@@ -159,7 +159,6 @@ public class BoostFramework {
             }
         }
         catch(Exception e) {
-            Log.e(TAG,"BoostFramework() : Exception_2 = " + e);
         }
     }
 
@@ -189,7 +188,6 @@ public class BoostFramework {
             }
         }
         catch(Exception e) {
-            Log.e(TAG,"BoostFramework() : Exception_3 = " + e);
         }
     }
 
@@ -208,7 +206,6 @@ public class BoostFramework {
             }
         }
         catch(Exception e) {
-            Log.e(TAG,"BoostFramework() : Exception_5 = " + e);
         }
     }
 
@@ -274,7 +271,6 @@ public class BoostFramework {
                     sIsLoaded = true;
                 }
                 catch(Exception e) {
-                    Log.e(TAG,"BoostFramework() : Exception_1 = " + e);
                 }
                 // Load UXE Class now Adding new try/catch block to avoid
                 // any interference with Qperformance
@@ -287,7 +283,6 @@ public class BoostFramework {
                     sUxIsLoaded = true;
                 }
                 catch(Exception e) {
-                    Log.e(TAG,"BoostFramework() Ux Perf: Exception = " + e);
                 }
             }
         }
@@ -390,17 +385,21 @@ public class BoostFramework {
 /** @hide */
     public int perfIOPrefetchStart(int pid, String pkgName, String codePath) {
         int ret = -1;
-        try {
-            Object retVal = sIOPStart.invoke(mPerf, pid, pkgName, codePath);
-            ret = (int) retVal;
-        } catch (Exception e) {
-            Log.e(TAG, "Exception " + e);
+        if (sIOPStart != null) {
+            try {
+                Object retVal = sIOPStart.invoke(mPerf, pid, pkgName, codePath);
+                ret = (int) retVal;
+            } catch (Exception e) {
+                Log.e(TAG, "Exception " + e);
+            }
         }
-        try {
-             Object retVal = sUxIOPStart.invoke(mUxPerf, pid, pkgName, codePath);
-             ret = (int) retVal;
-         } catch (Exception e) {
-             Log.e(TAG, "Ux Perf Exception " + e);
+        if (sUxIOPStart != null) {
+            try {
+                Object retVal = sUxIOPStart.invoke(mUxPerf, pid, pkgName, codePath);
+                ret = (int) retVal;
+            } catch (Exception e) {
+                Log.e(TAG, "Ux Perf Exception " + e);
+            }
          }
 
         return ret;
@@ -409,11 +408,13 @@ public class BoostFramework {
 /** @hide */
     public int perfIOPrefetchStop() {
         int ret = -1;
-        try {
-            Object retVal = sIOPStop.invoke(mPerf);
-            ret = (int) retVal;
-        } catch (Exception e) {
-            Log.e(TAG, "Exception " + e);
+        if (sIOPStop != null) {
+            try {
+                Object retVal = sIOPStop.invoke(mPerf);
+                ret = (int) retVal;
+            } catch (Exception e) {
+                Log.e(TAG, "Exception " + e);
+            }
         }
         return ret;
     }
