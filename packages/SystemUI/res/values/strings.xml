@@ -3045,10 +3045,10 @@
     <!-- Message to describe "Wi-Fi scan always available feature" when Wi-Fi is off and Wi-Fi scanning is on. [CHAR LIMIT=NONE] -->
     <string name="wifi_scan_notify_message">To improve device experience, apps and services can still scan for Wi\u2011Fi networks at any time, even when Wi\u2011Fi is off. You can change this in Wi\u2011Fi scanning settings. <annotation id="link">Change</annotation></string>
     <!-- DataSwitch Tile -->
-    <string name="qs_data_switch_label">Switch data card</string>
+    <string name="qs_data_switch_label">Switch data card to</string>
     <string name="qs_data_switch_toast_0">Currently no SIM card is inserted</string>
     <string name="qs_data_switch_toast_1">Currently only one SIM card is inserted</string>
-    <string name="qs_data_switch_changed_1">Switch data card to SIM 1.</string>
-    <string name="qs_data_switch_changed_2">Switch data card to SIM 2.</string>
+    <string name="qs_data_switch_changed_1">Using SIM 1 for Mobile data</string>
+    <string name="qs_data_switch_changed_2">Using SIM 2 for Mobile data</string>
 
 </resources>
