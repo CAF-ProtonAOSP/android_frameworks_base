@@ -199,6 +199,7 @@ public class StatusBarKeyguardViewManager implements RemoteInputController.Callb
     private boolean mLastAnimatedToSleep;
     private int mLastBiometricMode;
     private boolean mQsExpanded;
+    private boolean mLastLockVisible;
 
     private OnDismissAction mAfterKeyguardGoneAction;
     private Runnable mKeyguardGoneCancelAction;
@@ -967,6 +968,10 @@ public class StatusBarKeyguardViewManager implements RemoteInputController.Callb
         boolean lastNavBarVisible = getLastNavBarVisible();
         if (navBarVisible != lastNavBarVisible || mFirstUpdate) {
             updateNavigationBarVisibility(navBarVisible);
+        }
+
+        if (mDozing){
+            updateNavigationBarVisibility(false);
         }
 
         if (bouncerShowing != mLastBouncerShowing || mFirstUpdate) {
