@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.internal.util.custom;
+package com.android.internal.util.orgasmic;
 
 import android.os.Build;
 import android.util.Log;
@@ -64,7 +64,14 @@ public class PixelPropsUtils {
             "com.google.android.apps.googleassistant",
             "com.google.android.apps.maps",
             "com.google.android.gms",
-            "com.google.android.apps.nexuslauncher"
+            "com.google.android.apps.nexuslauncher",
+            "com.amazon.avod.thirdpartyclient",
+            "com.disney.disneyplus",
+            "com.netflix.mediaclient",
+            "in.startv.hotstar",
+            "it.ingdirect.app",
+            "com.spotify.music"
+
     };
 
     private static final String[] packagesToChangePixelXL = {
