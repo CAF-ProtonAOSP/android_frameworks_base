@@ -636,6 +636,9 @@ public abstract class ActivityManagerInternal {
      */
     public abstract @TempAllowListType int getPushMessagingOverQuotaBehavior();
 
+    // Starts a process as empty.
+    public abstract int startActivityAsUserEmpty(Bundle options);
+
     /**
      * Returns the capability of the given uid
      */

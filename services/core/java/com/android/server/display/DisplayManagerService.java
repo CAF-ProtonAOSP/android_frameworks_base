@@ -109,6 +109,7 @@ import android.util.Spline;
 import android.view.Display;
 import android.view.DisplayEventReceiver;
 import android.view.DisplayInfo;
+import android.view.DisplayAddress;
 import android.view.Surface;
 import android.view.SurfaceControl;
 
@@ -192,7 +193,9 @@ public final class DisplayManagerService extends SystemService {
 
     private static final String PROP_DEFAULT_DISPLAY_TOP_INSET = "persist.sys.displayinset.top";
     private static final long WAIT_FOR_DEFAULT_DISPLAY_TIMEOUT = 10000;
-    private static final float THRESHOLD_FOR_REFRESH_RATES_DIVIDERS = 0.1f;
+    // This value needs to be in sync with the threshold
+    // in RefreshRateConfigs::getFrameRateDivider.
+    private static final float THRESHOLD_FOR_REFRESH_RATES_DIVIDERS = 0.0009f;
 
     private static final int MSG_REGISTER_DEFAULT_DISPLAY_ADAPTERS = 1;
     private static final int MSG_REGISTER_ADDITIONAL_DISPLAY_ADAPTERS = 2;
@@ -423,6 +426,13 @@ public final class DisplayManagerService extends SystemService {
     @EnabledSince(targetSdkVersion = android.os.Build.VERSION_CODES.S)
     static final long DISPLAY_MODE_RETURNS_PHYSICAL_REFRESH_RATE = 170503758L;
 
+    // The synchronization root for the display dumpsys.
+    private final SyncRoot mSyncDump = new SyncRoot();
+
+    // Whether dump is inprogress or not.
+    @GuardedBy("mSyncDump")
+    private boolean mDumpInProgress;
+
     public DisplayManagerService(Context context) {
         this(context, new Injector());
     }
@@ -456,6 +466,7 @@ public final class DisplayManagerService extends SystemService {
         mAllowNonNativeRefreshRateOverride = mInjector.getAllowNonNativeRefreshRateOverride();
 
         mSystemReady = false;
+        mDumpInProgress = false;
     }
 
     public void setupSchedulerPolicies() {
@@ -705,8 +716,10 @@ public final class DisplayManagerService extends SystemService {
             final BrightnessPair brightnessPair =
                     index < 0 ? null : mDisplayBrightnesses.valueAt(index);
             if (index < 0 || (mDisplayStates.valueAt(index) == state
-                    && brightnessPair.brightness == brightnessState
-                    && brightnessPair.sdrBrightness == sdrBrightnessState)) {
+                    && BrightnessSynchronizer.floatEquals(
+                            brightnessPair.brightness, brightnessState)
+                    && BrightnessSynchronizer.floatEquals(
+                            brightnessPair.sdrBrightness, sdrBrightnessState))) {
                 return; // Display no longer exists or no change.
             }
 
@@ -812,7 +825,7 @@ public final class DisplayManagerService extends SystemService {
 
         // Override the refresh rate only if it is a divider of the current
         // refresh rate. This calculation needs to be in sync with the native code
-        // in RefreshRateConfigs::getRefreshRateDividerForUid
+        // in RefreshRateConfigs::getFrameRateDivider
         Display.Mode currentMode = info.getMode();
         float numPeriods = currentMode.getRefreshRate() / frameRateHz;
         float numPeriodsRound = Math.round(numPeriods);
@@ -1244,7 +1257,7 @@ public final class DisplayManagerService extends SystemService {
             recordTopInsetLocked(display);
         }
         addDisplayPowerControllerLocked(display);
-        mDisplayStates.append(displayId, Display.STATE_UNKNOWN);
+        mDisplayStates.append(displayId, Display.STATE_ON);
 
         final float brightnessDefault = display.getDisplayInfoLocked().brightnessDefault;
         mDisplayBrightnesses.append(displayId,
@@ -1931,6 +1944,14 @@ public final class DisplayManagerService extends SystemService {
     }
 
     private void dumpInternal(PrintWriter pw) {
+        synchronized (mSyncDump) {
+            if (mDumpInProgress) {
+                pw.println("One dump is in service already.");
+                return;
+            }
+            mDumpInProgress = true;
+        }
+
         pw.println("DISPLAY MANAGER (dumpsys display)");
 
         synchronized (mSyncRoot) {
@@ -2008,6 +2029,9 @@ public final class DisplayManagerService extends SystemService {
             }
             pw.println();
             mPersistentDataStore.dump(pw);
+        }
+        synchronized (mSyncDump) {
+            mDumpInProgress = false;
         }
     }
 

@@ -422,8 +422,14 @@ public abstract class Connection extends Conferenceable {
      */
     public static final int CAPABILITY_TRANSFER_CONSULTATIVE = 0x10000000;
 
+    /**
+     * Remote device supports RTT.
+     * @hide
+     */
+    public static final int CAPABILITY_SUPPORTS_RTT_REMOTE = 0x20000000;
+
     //**********************************************************************************************
-    // Next CAPABILITY value: 0x20000000
+    // Next CAPABILITY value: 0x40000000
     //**********************************************************************************************
 
     /**
@@ -554,6 +560,16 @@ public abstract class Connection extends Conferenceable {
      * <p>
      */
     public static final int PROPERTY_CROSS_SIM = 1 << 13;
+
+    /**
+     * Set by the framework to indicate that a Connection is participant host, which
+     * means the conference participant's handle is the same as the conference host's handle.
+     * <p>
+     * This property is specific to IMS conference calls originating in Telephony.
+     * @hide
+     */
+    public static final int PROPERTY_IS_PARTICIPANT_HOST = 1 << 14;
+
 
     //**********************************************************************************************
     // Next PROPERTY value: 1<<14
@@ -872,6 +888,17 @@ public abstract class Connection extends Conferenceable {
     public static final String EVENT_CALL_HOLD_FAILED = "android.telecom.event.CALL_HOLD_FAILED";
 
     /**
+     * Connection event used to inform Telecom when a resume operation on a call has failed.
+     * This event is only sent when concurrent calls (DSDA) are possible
+     * <p>
+     * Sent via {@link #sendConnectionEvent(String, Bundle)}.  The {@link Bundle} parameter is
+     * expected to be null when this connection event is used.
+     * @hide
+     */
+    public static final String EVENT_CALL_RESUME_FAILED =
+            "android.telecom.event.CALL_RESUME_FAILED";
+
+    /**
      * Connection event used to inform Telecom when a switch operation on a call has failed.
      * <p>
      * Sent via {@link #sendConnectionEvent(String, Bundle)}.  The {@link Bundle} parameter is
@@ -1122,6 +1149,9 @@ public abstract class Connection extends Conferenceable {
         if ((capabilities & CAPABILITY_TRANSFER_CONSULTATIVE)
                 == CAPABILITY_TRANSFER_CONSULTATIVE) {
             builder.append(isLong ? " CAPABILITY_TRANSFER_CONSULTATIVE" : " sup_cTrans");
+        }
+        if ((capabilities & CAPABILITY_SUPPORTS_RTT_REMOTE) == CAPABILITY_SUPPORTS_RTT_REMOTE) {
+            builder.append(isLong ? " CAPABILITY_SUPPORTS_RTT_REMOTE" : " sup_rtt");
         }
         builder.append("]");
         return builder.toString();

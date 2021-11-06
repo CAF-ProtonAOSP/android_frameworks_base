@@ -73,6 +73,7 @@ import static com.android.server.wm.RootWindowContainer.MATCH_ATTACHED_TASK_OR_R
 import static com.android.server.wm.RootWindowContainer.MATCH_ATTACHED_TASK_OR_RECENT_TASKS_AND_RESTORE;
 import static com.android.server.wm.SurfaceAnimator.ANIMATION_TYPE_APP_TRANSITION;
 import static com.android.server.wm.SurfaceAnimator.ANIMATION_TYPE_RECENTS;
+import static com.android.server.wm.Task.ActivityState.DESTROYED;
 import static com.android.server.wm.Task.ActivityState.PAUSED;
 import static com.android.server.wm.Task.ActivityState.PAUSING;
 import static com.android.server.wm.Task.FLAG_FORCE_HIDDEN_FOR_PINNED_TASK;
@@ -134,6 +135,8 @@ import android.util.MergedConfiguration;
 import android.util.Slog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.util.BoostFramework;
+import com.android.internal.app.procstats.ProcessStats;
 import android.view.Display;
 
 import com.android.internal.R;
@@ -155,6 +158,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import java.util.Arrays;
+import android.os.AsyncTask;
+
+import vendor.qti.hardware.servicetracker.V1_2.IServicetracker;
 
 // TODO: This class has become a dumping ground. Let's
 // - Move things relating to the hierarchy to RootWindowContainer
@@ -178,6 +186,12 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
 
     // How long we can hold the launch wake lock before giving up.
     private static final int LAUNCH_TIMEOUT = 10 * 1000 * Build.HW_TIMEOUT_MULTIPLIER;
+
+    public static boolean mPerfSendTapHint = false;
+    public static boolean mIsPerfBoostAcquired = false;
+    public static int mPerfHandle = -1;
+    public BoostFramework mPerfBoost = new BoostFramework();
+    public BoostFramework mUxPerf = new BoostFramework();
 
     /** How long we wait until giving up on the activity telling us it released the top state. */
     private static final int TOP_RESUMED_STATE_LOSS_TIMEOUT = 500;
@@ -238,7 +252,7 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
     private static final int MAX_TASK_IDS_PER_USER = UserHandle.PER_USER_RANGE;
 
     final ActivityTaskManagerService mService;
-    RootWindowContainer mRootWindowContainer;
+    public RootWindowContainer mRootWindowContainer;
 
     /** The historial list of recent tasks including inactive tasks */
     RecentTasks mRecentTasks;
@@ -253,6 +267,8 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
     private WindowManagerService mWindowManager;
 
     private AppOpsManager mAppOpsManager;
+
+    private IServicetracker mServicetracker;
 
     /** Common synchronization logic used to save things to disks. */
     PersisterQueue mPersisterQueue;
@@ -415,6 +431,28 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
         mLaunchParamsPersister.onSystemReady();
     }
 
+    public IServicetracker getServicetrackerInstance() {
+        if (mServicetracker == null) {
+            try {
+                mServicetracker = IServicetracker.getService(false);
+            } catch (java.util.NoSuchElementException e) {
+                // Service doesn't exist or cannot be opened logged below
+            } catch (RemoteException e) {
+                Slog.e(TAG, "Failed to get servicetracker interface", e);
+                return null;
+            }
+            if (mServicetracker == null) {
+                Slog.w(TAG, "servicetracker HIDL not available");
+                return null;
+            }
+        }
+        return mServicetracker;
+    }
+
+    public void destroyServicetrackerInstance() {
+        mServicetracker = null;
+    }
+
     void onUserUnlocked(int userId) {
         // Only start persisting when the first user is unlocked. The method call is
         // idempotent so there is no side effect to call it again when the second user is
@@ -575,6 +613,15 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
     void reportActivityLaunched(boolean timeout, ActivityRecord r, long totalTime,
             @WaitResult.LaunchState int launchState) {
         boolean changed = false;
+        if (totalTime > 0) {
+            if (mPerfBoost != null) {
+                if (r.app != null) {
+                    mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_DRAW,
+                        r.packageName, r.app.getPid(),
+                        BoostFramework.Draw.EVENT_TYPE_V1);
+                }
+            }
+        }
         for (int i = mWaitingActivityLaunched.size() - 1; i >= 0; i--) {
             final WaitInfo info = mWaitingActivityLaunched.get(i);
             if (!info.matches(r)) {
@@ -704,7 +751,7 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
         }
     }
 
-    ActivityInfo resolveActivity(Intent intent, String resolvedType, int startFlags,
+    public ActivityInfo resolveActivity(Intent intent, String resolvedType, int startFlags,
             ProfilerInfo profilerInfo, int userId, int filterCallingUid) {
         final ResolveInfo rInfo = resolveIntent(intent, resolvedType, userId, 0, filterCallingUid);
         return resolveActivity(intent, rInfo, startFlags, profilerInfo);
@@ -983,6 +1030,10 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
         boolean knownToBeDead = false;
         if (wpc != null && wpc.hasThread()) {
             try {
+                if (mPerfBoost != null) {
+                    Slog.i(TAG, "The Process " + r.processName + " Already Exists in BG. So sending its PID: " + wpc.getPid());
+                    mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.processName, wpc.getPid(), BoostFramework.Launch.TYPE_START_APP_FROM_BG);
+                }
                 realStartActivityLocked(r, wpc, andResume, checkConfig);
                 return;
             } catch (RemoteException e) {
@@ -1365,6 +1416,16 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
     void findTaskToMoveToFront(Task task, int flags, ActivityOptions options, String reason,
             boolean forceNonResizeable) {
         Task currentRootTask = task.getRootTask();
+
+        Task focusedStack = mRootWindowContainer.getTopDisplayFocusedRootTask();
+        ActivityRecord top_activity = focusedStack != null ? focusedStack.getTopNonFinishingActivity() : null;
+
+        //top_activity = task.stack.topRunningActivityLocked();
+        /* App is launching from recent apps and it's a new process */
+        if((top_activity != null) && (top_activity.getState() == DESTROYED)) {
+            acquireAppLaunchPerfLock(top_activity);
+        }
+
         if (currentRootTask == null) {
             Slog.e(TAG, "findTaskToMoveToFront: can't move task="
                     + task + " to front. Root task is null");
@@ -1635,6 +1696,15 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
                 ActivityManagerInternal::killProcessesForRemovedTask, mService.mAmInternal,
                 procsToKill);
         mService.mH.sendMessage(m);
+
+    }
+
+    public void startPreferredApps() {
+        try {
+            new PreferredAppsTask().execute();
+        } catch (Exception e) {
+            Slog.v (TAG, "Exception while calling PreferredAppsTask: " + e);
+        }
     }
 
     /**
@@ -1787,6 +1857,41 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
         checkReadyForSleepLocked(false /* allowDelay */);
 
         return timedout;
+    }
+
+    void acquireAppLaunchPerfLock(ActivityRecord r) {
+        /* Acquire perf lock during new app launch */
+        if (mPerfBoost != null) {
+            mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.packageName, -1, BoostFramework.Launch.BOOST_V1);
+            mPerfSendTapHint = true;
+            mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.packageName, -1, BoostFramework.Launch.BOOST_V2);
+            if (mService != null && r != null && r.info != null && r.info.applicationInfo !=null) {
+                final WindowProcessController wpc =
+                        mService.getProcessController(r.processName, r.info.applicationInfo.uid);
+                if (wpc != null && wpc.hasThread()) {
+                   //If target process didn't start yet, this operation will be done when app call attach
+                   mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.packageName, wpc.getPid(), BoostFramework.Launch.TYPE_ATTACH_APPLICATION);
+                }
+            }
+
+            if(mPerfBoost.perfGetFeedback(BoostFramework.VENDOR_FEEDBACK_WORKLOAD_TYPE, r.packageName) == BoostFramework.WorkloadType.GAME)
+            {
+                mPerfHandle = mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.packageName, -1, BoostFramework.Launch.BOOST_GAME);
+            } else {
+                mPerfHandle = mPerfBoost.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, r.packageName, -1, BoostFramework.Launch.BOOST_V3);
+            }
+            if (mPerfHandle > 0)
+                mIsPerfBoostAcquired = true;
+            // Start IOP
+            if (r.info.applicationInfo != null && r.info.applicationInfo.sourceDir != null) {
+                mPerfBoost.perfIOPrefetchStart(-1,r.packageName,
+                       r.info.applicationInfo.sourceDir.substring(0, r.info.applicationInfo.sourceDir.lastIndexOf('/')));
+            }
+        }
+    }
+
+    public ActivityRecord getTopResumedActivity() {
+        return mTopResumedActivity;
     }
 
     void comeOutOfSleepIfNeededLocked() {
@@ -2645,4 +2750,37 @@ public class ActivityTaskSupervisor implements RecentTasks.Callbacks {
             mResult.dump(pw, prefix + "    ");
         }
     }
+
+    class PreferredAppsTask extends AsyncTask<Void, Void, Void> {
+        @Override
+        protected Void doInBackground(Void... params) {
+            String res = null;
+            final Intent intent = new Intent(Intent.ACTION_MAIN);
+            int trimLevel = 0;
+            try {
+                trimLevel = ActivityManager.getService().getMemoryTrimLevel();
+            } catch (RemoteException e) {
+                return null;
+            }
+            if (mUxPerf != null
+                   && trimLevel < ProcessStats.ADJ_MEM_FACTOR_CRITICAL) {
+                res = mUxPerf.perfUXEngine_trigger(BoostFramework.UXE_TRIGGER);
+                if (res == null)
+                    return null;
+                String[] p_apps = res.split("/");
+                if (p_apps.length != 0) {
+                    ArrayList<String> apps_l = new ArrayList(Arrays.asList(p_apps));
+                    Bundle bParams = new Bundle();
+                    if (bParams == null)
+                        return null;
+                    bParams.putStringArrayList("start_empty_apps", apps_l);
+                    final Message msg = PooledLambda.obtainMessage(
+                                            ActivityManagerInternal::startActivityAsUserEmpty, mService.mAmInternal, bParams);
+                    mService.mH.sendMessage(msg);
+                }
+            }
+            return null;
+        }
+    }
+
 }

@@ -25,10 +25,12 @@ import android.graphics.Color;
 import android.os.Build;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.telephony.Rlog;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -962,5 +964,6 @@ public class IccUtils {
             serializedFplmns[offset++] = (byte) 0xff;
         }
         return serializedFplmns;
+
     }
 }

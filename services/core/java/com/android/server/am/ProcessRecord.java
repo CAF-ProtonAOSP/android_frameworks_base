@@ -46,6 +46,7 @@ import android.util.EventLog;
 import android.util.Slog;
 import android.util.TimeUtils;
 import android.util.proto.ProtoOutputStream;
+import android.util.BoostFramework;
 
 import com.android.internal.annotations.CompositeRWLock;
 import com.android.internal.annotations.GuardedBy;
@@ -566,6 +567,21 @@ class ProcessRecord implements WindowProcessListener {
 
     @GuardedBy({"mService", "mProcLock"})
     public void makeActive(IApplicationThread thread, ProcessStatsService tracker) {
+        // TODO(b/180501180): Add back this logging message.
+        /*
+        String seempStr = "app_uid=" + uid
+                            + ",app_pid=" + pid + ",oom_adj=" + curAdj
+                            + ",setAdj=" + setAdj + ",hasShownUi=" + (hasShownUi ? 1 : 0)
+                            + ",cached=" + (mCached ? 1 : 0)
+                            + ",fA=" + (mHasForegroundActivities ? 1 : 0)
+                            + ",fS=" + (mHasForegroundServices ? 1 : 0)
+                            + ",systemNoUi=" + (systemNoUi ? 1 : 0)
+                            + ",curSchedGroup=" + mCurSchedGroup
+                            + ",curProcState=" + getCurProcState() + ",setProcState=" + setProcState
+                            + ",killed=" + (killed ? 1 : 0) + ",killedByAm=" + (killedByAm ? 1 : 0)
+                            + ",isDebugging=" + (isDebugging() ? 1 : 0);
+        android.util.SeempLog.record_str(386, seempStr);
+        */
         mProfile.onProcessActive(thread, tracker);
         mThread = thread;
         mWindowProcessController.setThread(thread);
@@ -573,6 +589,21 @@ class ProcessRecord implements WindowProcessListener {
 
     @GuardedBy({"mService", "mProcLock"})
     public void makeInactive(ProcessStatsService tracker) {
+        // TODO(b/180501180): Add back this logging message.
+        /*
+        String seempStr = "app_uid=" + uid
+                            + ",app_pid=" + pid + ",oom_adj=" + curAdj
+                            + ",setAdj=" + setAdj + ",hasShownUi=" + (hasShownUi ? 1 : 0)
+                            + ",cached=" + (mCached ? 1 : 0)
+                            + ",fA=" + (mHasForegroundActivities ? 1 : 0)
+                            + ",fS=" + (mHasForegroundServices ? 1 : 0)
+                            + ",systemNoUi=" + (systemNoUi ? 1 : 0)
+                            + ",curSchedGroup=" + mCurSchedGroup
+                            + ",curProcState=" + getCurProcState() + ",setProcState=" + setProcState
+                            + ",killed=" + (killed ? 1 : 0) + ",killedByAm=" + (killedByAm ? 1 : 0)
+                            + ",isDebugging=" + (isDebugging() ? 1 : 0);
+        android.util.SeempLog.record_str(387, seempStr);
+        */
         mThread = null;
         mWindowProcessController.setThread(null);
         mProfile.onProcessInactive(tracker);
@@ -998,6 +1029,7 @@ class ProcessRecord implements WindowProcessListener {
             boolean noisy) {
         if (!mKilledByAm) {
             Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "kill");
+            BoostFramework ux_perf = new BoostFramework();
             if (mService != null && (noisy || info.uid == mService.mCurOomAdjUid)) {
                 mService.reportUidInfoMessageLocked(TAG,
                         "Killing " + toShortString() + " (adj " + mState.getSetAdj()
@@ -1018,6 +1050,13 @@ class ProcessRecord implements WindowProcessListener {
                     mKilledByAm = true;
                     mKillTime = SystemClock.uptimeMillis();
                 }
+            }
+            if (ux_perf != null && !mService.mForceStopKill && !mErrorState.isNotResponding()
+                && !mErrorState.isCrashing()) {
+                ux_perf.perfUXEngine_events(BoostFramework.UXE_EVENT_KILL, 0, this.processName, 0);
+                ux_perf.perfEvent(BoostFramework.VENDOR_HINT_KILL,this.processName, 2, 0,getPid());
+            } else {
+                mService.mForceStopKill = false;
             }
             Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
         }

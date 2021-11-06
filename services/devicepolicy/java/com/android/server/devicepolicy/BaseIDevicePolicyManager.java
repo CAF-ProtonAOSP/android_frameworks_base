@@ -27,6 +27,8 @@ import android.util.Slog;
 
 import com.android.server.SystemService;
 
+import java.util.List;
+
 /**
  * Defines the required interface for IDevicePolicyManager implemenation.
  *

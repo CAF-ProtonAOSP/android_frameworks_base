@@ -74,6 +74,7 @@ import androidx.annotation.NonNull;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.widget.LockPatternUtils;
+import com.android.keyguard.EmergencyCarrierArea;
 import com.android.keyguard.KeyguardUpdateMonitor;
 import com.android.keyguard.KeyguardUpdateMonitorCallback;
 import com.android.settingslib.Utils;
@@ -133,6 +134,8 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
     private static final Intent PHONE_INTENT = new Intent(Intent.ACTION_DIAL);
     private static final int DOZE_ANIMATION_STAGGER_DELAY = 48;
     private static final int DOZE_ANIMATION_ELEMENT_DURATION = 250;
+
+    private EmergencyCarrierArea mEmergencyCarrierArea;
 
     // TODO(b/179494051): May no longer be needed
     private final boolean mShowLeftAffordance;
@@ -274,6 +277,7 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
         super.onFinishInflate();
         mPreviewInflater = new PreviewInflater(mContext, new LockPatternUtils(mContext),
                 new ActivityIntentHelper(mContext));
+        mEmergencyCarrierArea = (EmergencyCarrierArea) findViewById(R.id.keyguard_selector_fade_container);
         mOverlayContainer = findViewById(R.id.overlay_container);
         mRightAffordanceView = findViewById(R.id.camera_button);
         mLeftAffordanceView = findViewById(R.id.left_button);
@@ -886,8 +890,10 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
 
         if (dozing) {
             mOverlayContainer.setVisibility(INVISIBLE);
+            mEmergencyCarrierArea.setVisibility(INVISIBLE);
         } else {
             mOverlayContainer.setVisibility(VISIBLE);
+            mEmergencyCarrierArea.setVisibility(VISIBLE);
             if (animate) {
                 startFinishDozeAnimation();
             }
@@ -917,6 +923,7 @@ public class KeyguardBottomAreaView extends FrameLayout implements View.OnClickL
         mIndicationArea.setAlpha(alpha);
         mWalletButton.setAlpha(alpha);
         mControlsButton.setAlpha(alpha);
+        mEmergencyCarrierArea.setAlpha(alpha);
     }
 
     private class DefaultLeftButton implements IntentButton {

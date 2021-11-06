@@ -141,6 +141,7 @@ import android.os.UserHandle;
 import android.sysprop.DisplayProperties;
 import android.util.AndroidRuntimeException;
 import android.util.ArraySet;
+import android.util.BoostFramework.ScrollOptimizer;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.IndentingPrintWriter;
@@ -762,6 +763,7 @@ public final class ViewRootImpl implements ViewParent,
     private int mSurfaceSequenceId = 0;
 
     private String mTag = TAG;
+    boolean mHaveMoveEvent = false;
 
     public ViewRootImpl(Context context, Display display) {
         this(context, display, WindowManagerGlobal.getWindowSession(),
@@ -1973,6 +1975,7 @@ public final class ViewRootImpl implements ViewParent,
                 mSurfaceSize.x, mSurfaceSize.y,
                 mWindowAttributes.format);
         }
+        ScrollOptimizer.setBLASTBufferQueue(mBlastBufferQueue);
 
         return ret;
     }
@@ -6342,6 +6345,12 @@ public final class ViewRootImpl implements ViewParent,
             mAttachInfo.mUnbufferedDispatchRequested = false;
             mAttachInfo.mHandlingPointerEvent = true;
             boolean handled = mView.dispatchPointerEvent(event);
+            int action = event.getActionMasked();
+            if (action == MotionEvent.ACTION_MOVE) {
+                mHaveMoveEvent = true;
+            } else if (action == MotionEvent.ACTION_UP) {
+                mHaveMoveEvent = false;
+            }
             maybeUpdatePointerIcon(event);
             maybeUpdateTooltip(event);
             mAttachInfo.mHandlingPointerEvent = false;
@@ -8491,6 +8500,7 @@ public final class ViewRootImpl implements ViewParent,
     }
 
     void doProcessInputEvents() {
+        ScrollOptimizer.setBLASTBufferQueue(mBlastBufferQueue);
         // Deliver all pending input events in the queue.
         while (mPendingInputEventHead != null) {
             QueuedInputEvent q = mPendingInputEventHead;

@@ -473,6 +473,35 @@ public class TelephonyManager {
     }
 
     /**
+     * The allowed values for multi sim voice capability
+     *
+     * @hide
+     */
+    public interface MultiSimVoiceCapability {
+        /** default */
+        static final int UNKNOWN = 0;
+        /** Concurrent calls on both subscriptions are not possbile. */
+        static final int DSDS = 1;
+        /** Concurrent calls on both subscriptions are not possible but user will have option to
+         * accept MT call on one subscription when there is an ongoing call on another subscription.
+         */
+        static final int PSEUDO_DSDA = 2;
+        /** Concurrent calls on both subscriptions are possible */
+        static final int DSDA = 3;
+    }
+
+    /**
+     * Returns true if concurrent calls on both subscriptions are possible (ex: DSDA).
+     * Returns false for other cases.
+     */
+    /** {@hide} */
+    public static boolean isConcurrentCallsPossible() {
+        int mSimVoiceConfig = TelephonyProperties.multi_sim_voice_capability().orElse(
+                MultiSimVoiceCapability.UNKNOWN);
+        return mSimVoiceConfig == MultiSimVoiceCapability.DSDA;
+    }
+
+    /**
      * Returns the number of phones available.
      * Returns 0 if none of voice, sms, data is not supported
      * Returns 1 for Single standby mode (Single SIM functionality).
@@ -2026,6 +2055,7 @@ public class TelephonyManager {
         }
 
         // FIXME this assumes phoneId == slotIndex
+        android.util.SeempLog.record_str(8, ""+slotIndex);
         try {
             IPhoneSubInfo info = getSubscriberInfoService();
             if (info == null)
@@ -2365,6 +2395,7 @@ public class TelephonyManager {
     @Deprecated
     @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
     public CellLocation getCellLocation() {
+        android.util.SeempLog.record(49);
         try {
             ITelephony telephony = getITelephony();
             if (telephony == null) {
@@ -2400,6 +2431,7 @@ public class TelephonyManager {
     @Deprecated
     @RequiresPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
     public List<NeighboringCellInfo> getNeighboringCellInfo() {
+        android.util.SeempLog.record(50);
         try {
             ITelephony telephony = getITelephony();
             if (telephony == null)
@@ -3855,6 +3887,7 @@ public class TelephonyManager {
             return null;
         }
 
+        android.util.SeempLog.record_str(388, ""+subId);
         try {
             IPhoneSubInfo info = getSubscriberInfoService();
             if (info == null)
@@ -4131,6 +4164,7 @@ public class TelephonyManager {
             return null;
         }
 
+        android.util.SeempLog.record_str(389, ""+subId);
         try {
             IPhoneSubInfo info = getSubscriberInfoService();
             if (info == null)
@@ -4737,6 +4771,7 @@ public class TelephonyManager {
     })
     @UnsupportedAppUsage
     public String getLine1Number(int subId) {
+        android.util.SeempLog.record_str(9, ""+subId);
         String number = null;
         try {
             ITelephony telephony = getITelephony();

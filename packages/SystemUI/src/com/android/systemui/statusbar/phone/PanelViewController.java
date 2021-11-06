@@ -57,6 +57,7 @@ import com.android.systemui.statusbar.VibratorHelper;
 import com.android.systemui.statusbar.notification.stack.AmbientState;
 import com.android.systemui.statusbar.phone.LockscreenGestureLogger.LockscreenUiEvent;
 import com.android.systemui.statusbar.policy.KeyguardStateController;
+import android.util.BoostFramework;
 import com.android.wm.shell.animation.FlingAnimationUtils;
 
 import java.io.FileDescriptor;
@@ -144,6 +145,11 @@ public abstract class PanelViewController {
     private final FalsingManager mFalsingManager;
     private final DozeLog mDozeLog;
     private final VibratorHelper mVibratorHelper;
+
+    /**
+     * For PanelView fling perflock call
+     */
+    private BoostFramework mPerf = null;
 
     /**
      * Whether an instant expand request is currently pending and we are just waiting for layout.
@@ -265,6 +271,8 @@ public abstract class PanelViewController {
         mVibratorHelper = vibratorHelper;
         mVibrateOnOpening = mResources.getBoolean(R.bool.config_vibrateOnIconAnimation);
         mStatusBarTouchableRegionManager = statusBarTouchableRegionManager;
+
+        mPerf = new BoostFramework();
     }
 
     protected void loadDimens() {
@@ -606,6 +614,10 @@ public abstract class PanelViewController {
                 animator.setDuration(mFixedDuration);
             }
         }
+        if (mPerf != null) {
+            String currentPackage = mView.getContext().getPackageName();
+            mPerf.perfHint(BoostFramework.VENDOR_HINT_SCROLL_BOOST, currentPackage, -1, BoostFramework.Scroll.PANEL_VIEW);
+        }
         animator.addListener(new AnimatorListenerAdapter() {
             private boolean mCancelled;
 
@@ -616,11 +628,17 @@ public abstract class PanelViewController {
 
             @Override
             public void onAnimationCancel(Animator animation) {
+                if (mPerf != null) {
+                    mPerf.perfLockRelease();
+                }
                 mCancelled = true;
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
+                if (mPerf != null) {
+                    mPerf.perfLockRelease();
+                }
                 if (shouldSpringBack && !mCancelled) {
                     // After the shade is flinged open to an overscrolled state, spring back
                     // the shade by reducing section padding to 0.

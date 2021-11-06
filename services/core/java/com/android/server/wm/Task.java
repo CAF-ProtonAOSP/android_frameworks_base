@@ -201,6 +201,7 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.service.voice.IVoiceInteractionSession;
 import android.util.ArraySet;
+import android.util.BoostFramework;
 import android.util.DisplayMetrics;
 import android.util.Slog;
 import android.util.TypedXmlPullParser;
@@ -221,6 +222,7 @@ import android.window.WindowContainerToken;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.app.ActivityTrigger;
 import com.android.internal.app.IVoiceInteractor;
 import com.android.internal.protolog.common.ProtoLog;
 import com.android.internal.util.XmlUtils;
@@ -315,6 +317,9 @@ class Task extends WindowContainer<WindowContainer> {
     // code.
     static final int PERSIST_TASK_VERSION = 1;
 
+    //ActivityTrigger
+    static final ActivityTrigger mActivityTrigger = new ActivityTrigger();
+
     static final int INVALID_MIN_SIZE = -1;
     private float mShadowRadius = 0;
 
@@ -364,6 +369,8 @@ class Task extends WindowContainer<WindowContainer> {
         DESTROYED,
         RESTARTING_PROCESS
     }
+
+    public BoostFramework mPerf = null;
 
     // The topmost Activity passed to convertToTranslucent(). When non-null it means we are
     // waiting for all Activities in mUndrawnActivitiesBelowTopTranslucent to be removed as they
@@ -621,6 +628,9 @@ class Task extends WindowContainer<WindowContainer> {
     private static final int TRANSLUCENT_TIMEOUT_MSG = FIRST_ACTIVITY_TASK_MSG + 1;
 
     private final Handler mHandler;
+
+    private static final ActivityPluginDelegate mActivityPluginDelegate =
+        new ActivityPluginDelegate();
 
     private class ActivityTaskHandler extends Handler {
 
@@ -5735,6 +5745,16 @@ class Task extends WindowContainer<WindowContainer> {
             return false;
         }
 
+        //Trigger Activity Pause
+        if (mActivityTrigger != null) {
+            mActivityTrigger.activityPauseTrigger(prev.intent, prev.info,
+                                                  prev.info.applicationInfo);
+        }
+
+        if (mActivityPluginDelegate != null && getWindowingMode() != WINDOWING_MODE_UNDEFINED) {
+            mActivityPluginDelegate.activitySuspendNotification
+                (prev.info.packageName, getWindowingMode() == WINDOWING_MODE_FULLSCREEN, true);
+        }
         ProtoLog.v(WM_DEBUG_STATES, "Moving to PAUSING: %s", prev);
         mPausingActivity = prev;
         mLastPausedActivity = prev;
@@ -6235,7 +6255,22 @@ class Task extends WindowContainer<WindowContainer> {
         // appropriate for it.
         mTaskSupervisor.mStoppingActivities.remove(next);
 
+        if (!next.translucentWindowLaunch)
+            next.launching = true;
+
         if (DEBUG_SWITCH) Slog.v(TAG_SWITCH, "Resuming " + next);
+
+        //Trigger Activity Resume
+        if (mActivityTrigger != null) {
+            mActivityTrigger.activityResumeTrigger(next.intent, next.info,
+                                                   next.info.applicationInfo,
+                                                   next.occludesParent());
+        }
+
+        if (mActivityPluginDelegate != null && getWindowingMode() != WINDOWING_MODE_UNDEFINED) {
+            mActivityPluginDelegate.activityInvokeNotification
+                (next.info.packageName, getWindowingMode() == WINDOWING_MODE_FULLSCREEN);
+        }
 
         mTaskSupervisor.setLaunchSource(next.info.applicationInfo.uid);
 
@@ -6338,6 +6373,9 @@ class Task extends WindowContainer<WindowContainer> {
         // to ignore it when computing the desired screen orientation.
         boolean anim = true;
         final DisplayContent dc = taskDisplayArea.mDisplayContent;
+        if (mPerf == null) {
+            mPerf = new BoostFramework();
+        }
         if (prev != null) {
             if (prev.finishing) {
                 if (DEBUG_TRANSITION) Slog.v(TAG_TRANSITION,
@@ -6346,6 +6384,10 @@ class Task extends WindowContainer<WindowContainer> {
                     anim = false;
                     dc.prepareAppTransition(TRANSIT_NONE);
                 } else {
+                    if(prev.getTask() != next.getTask() && mPerf != null) {
+                       mPerf.perfHint(BoostFramework.VENDOR_HINT_ANIM_BOOST,
+                           next.packageName);
+                    }
                     dc.prepareAppTransition(TRANSIT_CLOSE);
                 }
                 prev.setVisibility(false);
@@ -6356,6 +6398,10 @@ class Task extends WindowContainer<WindowContainer> {
                     anim = false;
                     dc.prepareAppTransition(TRANSIT_NONE);
                 } else {
+                    if(prev.getTask() != next.getTask() && mPerf != null) {
+                       mPerf.perfHint(BoostFramework.VENDOR_HINT_ANIM_BOOST,
+                           next.packageName);
+                    }
                     dc.prepareAppTransition(TRANSIT_OPEN,
                             next.mLaunchTaskBehind ? TRANSIT_FLAG_OPEN_BEHIND : 0);
                 }
@@ -6615,6 +6661,11 @@ class Task extends WindowContainer<WindowContainer> {
         ProtoLog.i(WM_DEBUG_ADD_REMOVE, "Adding activity %s to task %s "
                         + "callers: %s", r, task, new RuntimeException("here").fillInStackTrace());
         task.positionChildAtTop(r);
+
+        if (mActivityPluginDelegate != null) {
+            mActivityPluginDelegate.activityInvokeNotification
+                (r.info.packageName, getWindowingMode() == WINDOWING_MODE_FULLSCREEN);
+        }
 
         // The transition animation and starting window are not needed if {@code allowMoveToFront}
         // is false, because the activity won't be visible.
@@ -7758,6 +7809,13 @@ class Task extends WindowContainer<WindowContainer> {
 
     AnimatingActivityRegistry getAnimatingActivityRegistry() {
         return mAnimatingActivityRegistry;
+    }
+
+    public void onARStopTriggered(ActivityRecord r) {
+        if (mActivityPluginDelegate != null && getWindowingMode() != WINDOWING_MODE_UNDEFINED) {
+                            mActivityPluginDelegate.activitySuspendNotification
+                                (r.info.applicationInfo.packageName, getWindowingMode() == WINDOWING_MODE_FULLSCREEN, false);
+                        }
     }
 
     void executeAppTransition(ActivityOptions options) {

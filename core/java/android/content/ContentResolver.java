@@ -1104,6 +1104,7 @@ public abstract class ContentResolver implements ContentInterface {
     public final @Nullable Cursor query(@RequiresPermission.Read @NonNull Uri uri,
             @Nullable String[] projection, @Nullable String selection,
             @Nullable String[] selectionArgs, @Nullable String sortOrder) {
+        android.util.SeempLog.record_uri(13, uri);
         return query(uri, projection, selection, selectionArgs, sortOrder, null);
     }
 
@@ -1190,6 +1191,7 @@ public abstract class ContentResolver implements ContentInterface {
     public final @Nullable Cursor query(final @RequiresPermission.Read @NonNull Uri uri,
             @Nullable String[] projection, @Nullable Bundle queryArgs,
             @Nullable CancellationSignal cancellationSignal) {
+        android.util.SeempLog.record_uri(13, uri);
         Objects.requireNonNull(uri, "uri");
 
         try {
@@ -2176,6 +2178,7 @@ public abstract class ContentResolver implements ContentInterface {
     @Override
     public final @Nullable Uri insert(@RequiresPermission.Write @NonNull Uri url,
             @Nullable ContentValues values, @Nullable Bundle extras) {
+        android.util.SeempLog.record_uri(37, url);
         Objects.requireNonNull(url, "url");
 
         try {

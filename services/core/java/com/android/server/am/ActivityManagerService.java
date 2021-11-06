@@ -315,6 +315,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
+import android.util.BoostFramework;
+
 import android.view.autofill.AutofillManagerInternal;
 
 import com.android.internal.annotations.CompositeRWLock;
@@ -327,6 +329,7 @@ import com.android.internal.app.ProcessMap;
 import com.android.internal.app.SystemUserHomeActivity;
 import com.android.internal.app.procstats.ProcessState;
 import com.android.internal.app.procstats.ProcessStats;
+import com.android.internal.app.ActivityTrigger;
 import com.android.internal.content.PackageHelper;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.internal.notification.SystemNotificationChannels;
@@ -392,11 +395,13 @@ import com.android.server.utils.TimingsTraceAndSlog;
 import com.android.server.vr.VrManagerInternal;
 import com.android.server.wm.ActivityMetricsLaunchObserver;
 import com.android.server.wm.ActivityServiceConnectionsHolder;
+import com.android.server.wm.ActivityTaskSupervisor;
 import com.android.server.wm.ActivityTaskManagerInternal;
 import com.android.server.wm.ActivityTaskManagerService;
 import com.android.server.wm.WindowManagerInternal;
 import com.android.server.wm.WindowManagerService;
 import com.android.server.wm.WindowProcessController;
+import com.android.server.ActivityTriggerService;
 
 import dalvik.system.VMRuntime;
 
@@ -537,6 +542,12 @@ public class ActivityManagerService extends IActivityManager.Stub
             2000 * Build.HW_TIMEOUT_MULTIPLIER; // 2 seconds;
     private static final int JAVA_DUMP_MINIMUM_SIZE = 100; // 100 bytes.
 
+    /* Freq Aggr boost objects */
+    public static BoostFramework mPerfServiceStartHint = null;
+    /* UX perf event object */
+    public static BoostFramework mUxPerf = new BoostFramework();
+    public static boolean mForceStopKill = false;
+
     OomAdjuster mOomAdjuster;
 
     static final String EXTRA_TITLE = "android.intent.extra.TITLE";
@@ -554,6 +565,9 @@ public class ActivityManagerService extends IActivityManager.Stub
     SystemServiceManager mSystemServiceManager;
 
     private Installer mInstaller;
+
+    /** Run all ActivityStacks through this */
+    ActivityTaskSupervisor mTaskSupervisor;
 
     final InstrumentationReporter mInstrumentationReporter = new InstrumentationReporter();
 
@@ -896,6 +910,10 @@ public class ActivityManagerService extends IActivityManager.Stub
                 sActiveProcessInfoSelfLocked.remove(pid);
             }
         }
+        ActivityTriggerService atService = LocalServices.getService(ActivityTriggerService.class);
+        if(atService != null) {
+            atService.updateRecord(app.getHostingRecord(), app.info, app.getPid(), ActivityTriggerService.PROC_ADDED_NOTIFICATION);
+        }
         mAtmInternal.onProcessMapped(pid, app.getWindowProcessController());
     }
 
@@ -913,6 +931,10 @@ public class ActivityManagerService extends IActivityManager.Stub
         if (removed) {
             synchronized (sActiveProcessInfoSelfLocked) {
                 sActiveProcessInfoSelfLocked.remove(pid);
+            }
+            ActivityTriggerService atService = LocalServices.getService(ActivityTriggerService.class);
+            if(atService != null) {
+                atService.updateRecord(app.getHostingRecord(), app.info, app.getPid(), ActivityTriggerService.PROC_REMOVED_NOTIFICATION);
             }
             mAtmInternal.onProcessUnMapped(pid);
         }
@@ -2323,6 +2345,7 @@ public class ActivityManagerService extends IActivityManager.Stub
         mActivityTaskManager.initialize(mIntentFirewall, mPendingIntentController,
                 DisplayThread.get().getLooper());
         mAtmInternal = LocalServices.getService(ActivityTaskManagerInternal.class);
+        mTaskSupervisor = mActivityTaskManager.mTaskSupervisor;
 
         mHiddenApiBlacklist = new HiddenApiSettings(mHandler, mContext);
 
@@ -2338,7 +2361,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                     Process.THREAD_GROUP_SYSTEM);
             Process.setThreadGroupAndCpuset(
                     mOomAdjuster.mCachedAppOptimizer.mCachedAppOptimizerThread.getThreadId(),
-                    Process.THREAD_GROUP_SYSTEM);
+                    mOomAdjuster.mCachedAppOptimizer.mCompactionPriority);
         } catch (Exception e) {
             Slog.w(TAG, "Setting background thread cpuset failed");
         }
@@ -2943,6 +2966,46 @@ public class ActivityManagerService extends IActivityManager.Stub
         return mActivityTaskManager.startActivityFromRecents(taskId, bOptions);
     }
 
+    public int startActivityAsUserEmpty(Bundle options) {
+        ArrayList<String> pApps = options.getStringArrayList("start_empty_apps");
+        if (pApps != null && pApps.size() > 0) {
+            Iterator<String> apps_itr = pApps.iterator();
+            while (apps_itr.hasNext()) {
+                ProcessRecord empty_app = null;
+                String app_str = apps_itr.next();
+                if (app_str == null)
+                    continue;
+                synchronized (this) {
+                    Intent intent_l = null;
+                    try {
+                        intent_l = mContext.getPackageManager().getLaunchIntentForPackage(app_str);
+                        if (intent_l == null)
+                            continue;
+                        ActivityInfo aInfo = mTaskSupervisor.resolveActivity(intent_l, null,
+                                                                          0, null, 0, 0);
+                        if (aInfo == null)
+                            continue;
+                        empty_app = startProcessLocked(
+                            app_str,
+                            aInfo.applicationInfo,
+                            false /* knownToBeDead */,
+                            0 /* intentFlags */,
+                           sNullHostingRecord /* hostingRecord */,
+                           ZYGOTE_POLICY_FLAG_EMPTY /* zygotePolicyFlags */,
+                           false /* allowWhileBooting */,
+                           false /* isolated */);
+                        if (empty_app != null)
+                            updateOomAdjLocked(empty_app, OomAdjuster.OOM_ADJ_REASON_NONE);
+                    } catch (Exception e) {
+                        if (DEBUG_PROCESSES)
+                            Slog.w(TAG, "Exception raised trying to start app as empty " + e);
+                    }
+                }
+            }
+        }
+        return 1;
+    }
+
     /**
      * This is the internal entry point for handling Activity.finish().
      *
@@ -3117,6 +3180,12 @@ public class ActivityManagerService extends IActivityManager.Stub
                 mAppProfiler.setAllowLowerMemLevelLocked(false);
                 doLowMem = false;
             }
+
+            if (mUxPerf != null && !mForceStopKill && !app.mErrorState.isNotResponding() && !app.mErrorState.isCrashing()) {
+                mUxPerf.perfUXEngine_events(BoostFramework.UXE_EVENT_KILL, 0, app.processName, 0);
+                mUxPerf.perfEvent(BoostFramework.VENDOR_HINT_KILL, app.processName, 2, 0, pid);
+            }
+
             EventLogTags.writeAmProcDied(app.userId, pid, app.processName, setAdj, setProcState);
             if (DEBUG_CLEANUP) Slog.v(TAG_CLEANUP,
                 "Dying app: " + app + ", pid: " + pid + ", thread: " + thread.asBinder());
@@ -3292,13 +3361,19 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         final int max = SystemProperties.getInt("tombstoned.max_anr_count", 64);
         final long now = System.currentTimeMillis();
-        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
-        for (int i = 0; i < files.length; ++i) {
-            if (i > max || (now - files[i].lastModified()) > DAY_IN_MILLIS) {
-                if (!files[i].delete()) {
-                    Slog.w(TAG, "Unable to prune stale trace file: " + files[i]);
+        try {
+            Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+            for (int i = 0; i < files.length; ++i) {
+                if (i > max || (now - files[i].lastModified()) > DAY_IN_MILLIS) {
+                    if (!files[i].delete()) {
+                        Slog.w(TAG, "Unable to prune stale trace file: " + files[i]);
+                    }
                 }
             }
+        } catch (IllegalArgumentException e) {
+            // The modification times changed while we were sorting. Bail...
+            // https://issuetracker.google.com/169836837
+            Slog.w(TAG, "tombstone modification times changed while sorting; not pruning", e);
         }
     }
 
@@ -4151,6 +4226,7 @@ public class ActivityManagerService extends IActivityManager.Stub
 
             mAppErrors.resetProcessCrashTime(packageName == null, appId, userId);
         }
+        mForceStopKill = true;
 
         synchronized (mProcLock) {
             // Notify first that the package is stopped, so its process won't be restarted
@@ -4367,6 +4443,10 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
 
         EventLogTags.writeAmProcBound(app.userId, pid, app.processName);
+
+        if (mUxPerf != null && app.getHostingRecord() != null && app.getHostingRecord().isTopApp()) {
+            mUxPerf.perfHint(BoostFramework.VENDOR_HINT_FIRST_LAUNCH_BOOST, app.processName, pid, BoostFramework.Launch.TYPE_ATTACH_APPLICATION);
+        }
 
         synchronized (mProcLock) {
             app.mState.setCurAdj(ProcessList.INVALID_ADJ);
@@ -4756,6 +4836,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                                 String data, Bundle extras, boolean ordered,
                                 boolean sticky, int sendingUser) {
                             synchronized (mProcLock) {
+                                mOomAdjuster.mCachedAppOptimizer.compactAllSystem();
                                 mAppProfiler.requestPssAllProcsLPr(
                                         SystemClock.uptimeMillis(), true, false);
                             }
@@ -11779,6 +11860,28 @@ public class ActivityManagerService extends IActivityManager.Stub
             }
             app.setPid(0);
         }
+
+        // Call Preferred App
+        if (app != null) {
+            ArrayList<ApplicationExitInfo> results = new ArrayList<ApplicationExitInfo>();
+            mProcessList.mAppExitInfoTracker.getExitInfo(
+                    app.processName, app.uid, app.getPid(), 0, results);
+            if (results != null) {
+                boolean recentAppClose = false;
+                for (int i=0; i<results.size();i++) {
+                    ApplicationExitInfo appExitInfo = results.get(i);
+                    if ((appExitInfo.getReason() == ApplicationExitInfo.REASON_USER_REQUESTED
+                            || appExitInfo.getReason() == ApplicationExitInfo.REASON_USER_STOPPED)
+                                && appExitInfo.getDescription() == "remove task") {
+                        recentAppClose = true;
+                        break;
+                    }
+                }
+                if (recentAppClose) {
+                    mTaskSupervisor.startPreferredApps();
+                }
+            }
+        }
         return false;
     }
 
@@ -15312,6 +15415,11 @@ public class ActivityManagerService extends IActivityManager.Stub
             // Clean up various services by removing the user
             mBatteryStatsService.onUserRemoved(userId);
             mUserController.onUserRemoved(userId);
+        }
+
+        @Override
+        public int startActivityAsUserEmpty(Bundle options) {
+            return ActivityManagerService.this.startActivityAsUserEmpty(options);
         }
 
         @Override

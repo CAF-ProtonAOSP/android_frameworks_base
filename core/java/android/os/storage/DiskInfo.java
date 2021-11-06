@@ -50,6 +50,8 @@ public class DiskInfo implements Parcelable {
     public static final int FLAG_DEFAULT_PRIMARY = 1 << 1;
     public static final int FLAG_SD = 1 << 2;
     public static final int FLAG_USB = 1 << 3;
+    public static final int FLAG_EMMC = 1 << 4;
+    public static final int FLAG_UFS_CARD = 1 << 5;
     /** The FLAG_STUB_VISIBLE is set from vold, which gets the flag from outside (e.g., ChromeOS) */
     public static final int FLAG_STUB_VISIBLE = 1 << 6;
 

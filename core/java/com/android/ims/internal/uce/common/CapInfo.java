@@ -251,7 +251,7 @@ public class CapInfo implements Parcelable {
    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
    public boolean isFtHttpSupported() {
        return  mFtHttpSupported;
-   }
+    }
 
    /**
     * Sets File transfer HTTP as supported or not supported.
@@ -260,7 +260,7 @@ public class CapInfo implements Parcelable {
    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
    public void setFtHttpSupported(boolean  ftHttpSupported) {
        this.mFtHttpSupported =  ftHttpSupported;
-   }
+    }
 
     /**
      * Checks whether FT is supported.
@@ -428,7 +428,7 @@ public class CapInfo implements Parcelable {
    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
    public void setGeoPullFtSupported(boolean geoPullFtSupported) {
        this.mGeoPullFtSupported = geoPullFtSupported;
-   }
+    }
 
     /**
      * Checks whether Geo Pull is supported.

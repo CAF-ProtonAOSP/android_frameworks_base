@@ -1806,6 +1806,9 @@
     <!-- Integer to set a max latency the accelerometer will batch sensor requests with. -->
     <integer name="config_flipToScreenOffMaxLatencyMicros">2000000</integer>
 
+    <!-- Component name of the combo network location provider. -->
+    <string name="config_comboNetworkLocationProvider" translatable="false">com.qualcomm.location</string>
+
     <!-- Boolean indicating if current platform supports bluetooth SCO for off call
     use cases -->
     <bool name="config_bluetooth_sco_off_call">true</bool>
@@ -3031,6 +3034,9 @@
     <!-- Flag indicating which package name can access DeviceConfig table -->
     <string name="config_deviceConfiguratorPackageName" translatable="false"></string>
 
+    <!--  Define optional package verifier name -->
+    <string name="config_optionalPackageVerifierName" translatable="false"></string>
+
     <!-- Flag indicating apps will skip sending hold request before merge. In this case
         IMS service implementation will do both.i.e.hold followed by merge. -->
     <bool name="skipHoldBeforeMerge">true</bool>
@@ -3178,6 +3184,10 @@
          state changes. Voice radio tech change will always trigger an update of
          phone object irrespective of this config -->
     <bool name="config_switch_phone_on_voice_reg_state_change">true</bool>
+
+    <!-- Config determines whether to add 3 seconds delay for ims deregistration
+         before sending RADIO POWER OFF in APM ON and shutdown scenarios -->
+    <bool name="config_wait_for_ims_deregistration_before_radio_poweroff">false</bool>
 
     <bool name="config_sms_force_7bit_encoding">false</bool>
 
@@ -4157,6 +4167,15 @@
     <!-- Package name for ManagedProvisioning which is responsible for provisioning work profiles. -->
     <string name="config_managed_provisioning_package" translatable="false">com.android.managedprovisioning</string>
 
+    <!-- The duration (in milliseconds) for the outgoing sms authorization request to timeout.-->
+    <integer name="config_sms_authorization_timeout_ms">0</integer>
+
+    <!-- Enable sms authorization framework-->
+    <bool name="config_sms_authorization_enabled">false</bool>
+
+    <!-- whether to enable primarycard -->
+    <bool name="config_primarycard">false</bool>
+
     <!-- Whether or not swipe up gesture's opt-in setting is available on this device -->
     <bool name="config_swipe_up_gesture_setting_available">true</bool>
 
@@ -4191,6 +4210,10 @@
 
     <!-- Whether or not the "SMS app service" feature is enabled -->
     <bool name="config_useSmsAppService">true</bool>
+
+    <!-- List of names that represent dual SoftAp interfaces. -->
+    <string-array translatable="false" name="config_wifi_dual_sap_interfaces">
+    </string-array>
 
     <!-- Class name for the InputEvent compatibility processor override.
          Empty string means use the default compatibility processor

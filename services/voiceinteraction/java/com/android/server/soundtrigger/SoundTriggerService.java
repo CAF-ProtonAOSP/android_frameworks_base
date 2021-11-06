@@ -645,6 +645,7 @@ public class SoundTriggerService extends SystemService {
                 sEventLogger.log(new SoundTriggerLogger.StringEvent("unloadSoundModel(): id = "
                         + soundModelId));
 
+
                 synchronized (mLock) {
                     SoundModel soundModel = mLoadedModels.get(soundModelId.getUuid());
                     if (soundModel == null) {

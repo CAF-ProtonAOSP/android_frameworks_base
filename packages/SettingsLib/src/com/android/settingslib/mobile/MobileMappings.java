@@ -18,6 +18,7 @@ package com.android.settingslib.mobile;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.PersistableBundle;
+import android.os.SystemProperties;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -200,6 +201,14 @@ public class MobileMappings {
         public boolean hspaDataDistinguishable;
         public boolean alwaysShowDataRatIcon = false;
 
+        public boolean showRsrpSignalLevelforLTE = false;
+        public boolean hideNoInternetState = false;
+        public boolean showVolteIcon = false;
+        public boolean alwaysShowNetworkTypeIcon = false;
+        public boolean enableRatIconEnhancement = false;
+        public boolean showVowifiIcon = false;
+        public boolean enableDdsRatIconEnhancement = false;
+
         /**
          * Reads the latest configs.
          */
@@ -229,6 +238,22 @@ public class MobileMappings {
                 config.hideLtePlus = b.getBoolean(
                         CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL);
             }
+
+            config.alwaysShowNetworkTypeIcon = res.getBoolean(R.bool.config_alwaysShowTypeIcon);
+            config.showRsrpSignalLevelforLTE =
+                    res.getBoolean(R.bool.config_showRsrpSignalLevelforLTE);
+            config.hideNoInternetState = res.getBoolean(R.bool.config_hideNoInternetState);
+            config.showVolteIcon = res.getBoolean(R.bool.config_display_volte);
+            config.showVowifiIcon = res.getBoolean(R.bool.config_display_vowifi);
+            if ( config.alwaysShowNetworkTypeIcon ) {
+                config.hideLtePlus = false;
+            }
+
+            config.enableRatIconEnhancement =
+                    SystemProperties.getBoolean("persist.sysui.rat_icon_enhancement", false);
+            config.enableDdsRatIconEnhancement =
+                    SystemProperties.getBoolean("persist.sysui.dds_rat_icon_enhancement", false);
+
             return config;
         }
     }

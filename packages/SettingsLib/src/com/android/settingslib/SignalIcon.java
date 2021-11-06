@@ -169,6 +169,11 @@ public class SignalIcon {
         public boolean userSetup;
         public boolean roaming;
         public boolean defaultDataOff;  // Tracks the on/off state of the defaultDataSubscription
+        public boolean imsRegistered;
+        public boolean voiceCapable;
+        public boolean videoCapable;
+        public boolean mobileDataEnabled;
+        public boolean roamingDataEnabled;
 
         @Override
         public void copyFrom(State s) {
@@ -185,6 +190,11 @@ public class SignalIcon {
             userSetup = state.userSetup;
             roaming = state.roaming;
             defaultDataOff = state.defaultDataOff;
+            imsRegistered = state.imsRegistered;
+            voiceCapable = state.voiceCapable;
+            videoCapable = state.videoCapable;
+            mobileDataEnabled = state.mobileDataEnabled;
+            roamingDataEnabled = state.roamingDataEnabled;
         }
 
         @Override
@@ -203,22 +213,32 @@ public class SignalIcon {
                     .append(',');
             builder.append("userSetup=").append(userSetup).append(',');
             builder.append("defaultDataOff=").append(defaultDataOff);
+            builder.append("imsRegistered=").append(imsRegistered).append(',');
+            builder.append("voiceCapable=").append(voiceCapable).append(',');
+            builder.append("videoCapable=").append(videoCapable).append(',');
+            builder.append("mobileDataEnabled=").append(mobileDataEnabled).append(',');
+            builder.append("roamingDataEnabled=").append(roamingDataEnabled);
         }
 
         @Override
         public boolean equals(Object o) {
             return super.equals(o)
-                && Objects.equals(((MobileState) o).networkName, networkName)
-                && Objects.equals(((MobileState) o).networkNameData, networkNameData)
-                && ((MobileState) o).dataSim == dataSim
-                && ((MobileState) o).dataConnected == dataConnected
-                && ((MobileState) o).isEmergency == isEmergency
-                && ((MobileState) o).airplaneMode == airplaneMode
-                && ((MobileState) o).carrierNetworkChangeMode == carrierNetworkChangeMode
-                && ((MobileState) o).userSetup == userSetup
-                && ((MobileState) o).isDefault == isDefault
-                && ((MobileState) o).roaming == roaming
-                && ((MobileState) o).defaultDataOff == defaultDataOff;
+                    && Objects.equals(((MobileState) o).networkName, networkName)
+                    && Objects.equals(((MobileState) o).networkNameData, networkNameData)
+                    && ((MobileState) o).dataSim == dataSim
+                    && ((MobileState) o).dataConnected == dataConnected
+                    && ((MobileState) o).isEmergency == isEmergency
+                    && ((MobileState) o).airplaneMode == airplaneMode
+                    && ((MobileState) o).carrierNetworkChangeMode == carrierNetworkChangeMode
+                    && ((MobileState) o).userSetup == userSetup
+                    && ((MobileState) o).isDefault == isDefault
+                    && ((MobileState) o).roaming == roaming
+                    && ((MobileState) o).defaultDataOff == defaultDataOff
+                    && ((MobileState) o).imsRegistered == imsRegistered
+                    && ((MobileState) o).voiceCapable == voiceCapable
+                    && ((MobileState) o).videoCapable == videoCapable
+                    && ((MobileState) o).mobileDataEnabled == mobileDataEnabled
+                    && ((MobileState) o).roamingDataEnabled == roamingDataEnabled;
         }
     }
 }

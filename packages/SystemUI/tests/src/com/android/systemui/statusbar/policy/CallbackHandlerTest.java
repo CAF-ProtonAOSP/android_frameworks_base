@@ -123,7 +123,7 @@ public class CallbackHandlerTest extends SysuiTestCase {
         int subId = 5;
         boolean roaming = true;
         MobileDataIndicators indicators = new MobileDataIndicators(
-                status, qs, type, qsType, in, out, typeDescription,
+                status, qs, type, qsType, in, out, 0, typeDescription,
                 typeDescriptionHtml, description, wide, subId, roaming, true);
         mHandler.setMobileDataIndicators(indicators);
         waitForCallbacks();

@@ -180,7 +180,9 @@ static void* decodeImage(const void* encodedData, size_t dataLength, AndroidBitm
     const size_t size = outInfo->stride * outInfo->height;
     void* pixels = malloc(size);
     int result = AImageDecoder_decodeImage(decoder, pixels, outInfo->stride, size);
-    AImageDecoder_delete(decoder);
+    // TODO(b/180130969) Fix ~ImageDecoder() so that AImageDecoder_delete stops
+    // causing a segfault, then add back this call to AImageDecoder_delete().
+    //AImageDecoder_delete(decoder);
 
     if (result != ANDROID_IMAGE_DECODER_SUCCESS) {
         free(pixels);
@@ -576,6 +578,17 @@ void BootAnimation::findBootAnimationFile() {
         if (findBootAnimationFileInternal(encryptedBootFiles)) {
             return;
         }
+    }
+
+    std::string custAnimProp = !mShuttingDown ?
+        android::base::GetProperty("persist.sys.customanim.boot", ""):
+        android::base::GetProperty("persist.sys.customanim.shutdown", "");
+    const char *custAnim = custAnimProp.c_str();
+    ALOGD("Animation customzation path: %s", custAnim);
+    if (access(custAnim, R_OK) == 0) {
+        mZipFileName = custAnim;
+        ALOGD("%sAnimation customzation path: %s", mShuttingDown ? "Shutdown" : "Boot", mZipFileName.c_str());
+        return;
     }
 
     const bool playDarkAnim = android::base::GetIntProperty("ro.boot.theme", 0) == 1;

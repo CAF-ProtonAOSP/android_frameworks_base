@@ -31,6 +31,7 @@ import android.util.SparseIntArray;
 import android.view.Display;
 import android.view.DisplayAddress;
 import android.view.DisplayInfo;
+import android.view.DisplayAddress;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.display.LogicalDisplay.DisplayPhase;
@@ -102,6 +103,7 @@ class LogicalDisplayMapper implements DisplayDeviceRepository.Listener {
      */
     private final SparseArray<LogicalDisplay> mLogicalDisplays =
             new SparseArray<LogicalDisplay>();
+    private int mNextBuiltInDisplayId = 4096;
 
     /** Map of all display groups indexed by display group id. */
     private final SparseArray<DisplayGroup> mDisplayGroups = new SparseArray<>();

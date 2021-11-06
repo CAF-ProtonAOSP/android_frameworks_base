@@ -178,7 +178,7 @@ public class KeyguardSimPukViewController
         if (mRemainingAttempts >= 0) {
             mMessageAreaController.setMessage(mView.getPukPasswordErrorMessage(
                     mRemainingAttempts, true,
-                    KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId)));
+                    KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId), mSubId));
             return;
         }
 
@@ -221,7 +221,7 @@ public class KeyguardSimPukViewController
                         mMessageAreaController.setMessage(
                                 mView.getPukPasswordErrorMessage(
                                         result.getAttemptsRemaining(), true,
-                                        KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId)));
+                                        KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId), mSubId));
                     }
                 }
             }
@@ -281,7 +281,7 @@ public class KeyguardSimPukViewController
                                 // show message
                                 mMessageAreaController.setMessage(mView.getPukPasswordErrorMessage(
                                         result.getAttemptsRemaining(), false,
-                                        KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId)));
+                                        KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId), mSubId));
                                 if (result.getAttemptsRemaining() <= 2) {
                                     // this is getting critical - show dialog
                                     getPukRemainingAttemptsDialog(
@@ -292,7 +292,7 @@ public class KeyguardSimPukViewController
                                             mView.getPukPasswordErrorMessage(
                                                     result.getAttemptsRemaining(), false,
                                                     KeyguardEsimArea.isEsimLocked(
-                                                            mView.getContext(), mSubId)));
+                                                            mView.getContext(), mSubId), mSubId));
                                 }
                             } else {
                                 mMessageAreaController.setMessage(mView.getResources().getString(
@@ -341,13 +341,15 @@ public class KeyguardSimPukViewController
             mSubId = subId;
             mShowDefaultMessage = true;
             mRemainingAttempts = -1;
+        }else{
+            mShowDefaultMessage = false;
         }
     }
 
 
     private Dialog getPukRemainingAttemptsDialog(int remaining) {
         String msg = mView.getPukPasswordErrorMessage(remaining, false,
-                KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId));
+                KeyguardEsimArea.isEsimLocked(mView.getContext(), mSubId), mSubId);
         if (mRemainingAttemptsDialog == null) {
             AlertDialog.Builder builder = new AlertDialog.Builder(mView.getContext());
             builder.setMessage(msg);

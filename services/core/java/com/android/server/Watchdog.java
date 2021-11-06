@@ -46,6 +46,7 @@ import com.android.internal.os.ZygoteConnectionConstants;
 import com.android.internal.util.FrameworkStatsLog;
 import com.android.server.am.ActivityManagerService;
 import com.android.server.am.TraceErrorLogger;
+import com.android.server.am.trace.SmartTraceUtils;
 import com.android.server.wm.SurfaceAnimationThread;
 
 import java.io.BufferedReader;
@@ -53,7 +54,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,6 +65,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 
 /** This class calls its monitor every minute. Killing this process if they don't return **/
 public class Watchdog {
@@ -102,6 +107,7 @@ public class Watchdog {
         "/system/bin/keystore2",
         "/system/bin/mediadrmserver",
         "/system/bin/mediaserver",
+        "/system/bin/mediaserver64",
         "/system/bin/netd",
         "/system/bin/sdcard",
         "/system/bin/surfaceflinger",
@@ -159,6 +165,7 @@ public class Watchdog {
 
     private IActivityController mController;
     private boolean mAllowRestart = true;
+    SimpleDateFormat mTraceDateFormat = new SimpleDateFormat("dd_MM_HH_mm_ss.SSS");
     private final List<Integer> mInterestingJavaPids = new ArrayList<>();
 
     private final TraceErrorLogger mTraceErrorLogger;
@@ -575,7 +582,7 @@ public class Watchdog {
         }
     }
 
-    static ArrayList<Integer> getInterestingNativePids() {
+    public static ArrayList<Integer> getInterestingNativePids() {
         HashSet<Integer> pids = new HashSet<>();
         addInterestingAidlPids(pids);
         addInterestingHidlPids(pids);
@@ -592,6 +599,7 @@ public class Watchdog {
 
     private void run() {
         boolean waitedHalf = false;
+        File initialStack = null;
         while (true) {
             List<HandlerChecker> blockedCheckers = Collections.emptyList();
             String subject = "";
@@ -661,10 +669,15 @@ public class Watchdog {
             } // END synchronized (mLock)
 
             if (doWaitedHalfDump) {
+                ArrayList<Integer> nativePids = getInterestingNativePids();
                 // We've waited half the deadlock-detection interval.  Pull a stack
                 // trace and wait another half.
-                ActivityManagerService.dumpStackTraces(pids, null, null,
-                        getInterestingNativePids(), null, subject);
+                initialStack = ActivityManagerService.dumpStackTraces(pids, null, null,
+                        nativePids, null, subject);
+                if (initialStack != null){
+                    SmartTraceUtils.dumpStackTraces(Process.myPid(), pids,
+                        nativePids, initialStack);
+                }
                 continue;
             }
 
@@ -685,15 +698,30 @@ public class Watchdog {
             // Perfetto. Ideally, the Perfetto trace capture should happen as close to the
             // point in time when the Watchdog happens as possible.
             FrameworkStatsLog.write(FrameworkStatsLog.SYSTEM_SERVER_WATCHDOG_OCCURRED, subject);
+            ArrayList<Integer> nativePids = getInterestingNativePids();
 
             long anrTime = SystemClock.uptimeMillis();
             StringBuilder report = new StringBuilder();
             report.append(MemoryPressureUtil.currentPsiState());
             ProcessCpuTracker processCpuTracker = new ProcessCpuTracker(false);
             StringWriter tracesFileException = new StringWriter();
-            final File stack = ActivityManagerService.dumpStackTraces(
-                    pids, processCpuTracker, new SparseArray<>(), getInterestingNativePids(),
+            final File finalStack = ActivityManagerService.dumpStackTraces(
+                    pids, processCpuTracker, new SparseArray<>(), nativePids,
                     tracesFileException, subject);
+            if (finalStack != null){
+                SmartTraceUtils.dumpStackTraces(Process.myPid(), pids, nativePids, finalStack);
+            }
+            //Collect Binder State logs to get status of all the transactions
+            if (Build.IS_DEBUGGABLE) {
+                binderStateRead();
+            }
+
+            long dueTime = 0;
+            if(SmartTraceUtils.isPerfettoDumpEnabled()){
+               SmartTraceUtils.traceStart();
+               //delay 30s to make sure perfetto trace dumped completely
+               dueTime = SystemClock.uptimeMillis() + 30000;
+            }
 
             // Give some extra time to make sure the stack traces get written.
             // The system's been hanging for a minute, another second or two won't hurt much.
@@ -703,9 +731,54 @@ public class Watchdog {
             report.append(processCpuTracker.printCurrentState(anrTime));
             report.append(tracesFileException.getBuffer());
 
-            // Trigger the kernel to dump all blocked threads, and backtraces on all CPUs to the kernel log
-            doSysRq('w');
-            doSysRq('l');
+            File watchdogTraces;
+            String newTracesPath = "traces_SystemServer_WDT"
+                    + mTraceDateFormat.format(new Date()) + "_pid"
+                    + String.valueOf(Process.myPid());
+            File tracesDir = new File(ActivityManagerService.ANR_TRACE_DIR);
+            watchdogTraces = new File(tracesDir, newTracesPath);
+            try {
+                if (watchdogTraces.createNewFile()) {
+                    FileUtils.setPermissions(watchdogTraces.getAbsolutePath(),
+                            0600, -1, -1); // -rw------- permissions
+
+                    // Append both traces from the first and second half
+                    // to a new file, making it easier to debug Watchdog timeouts
+                    // dumpStackTraces() can return a null instance, so check the same
+                    if (initialStack != null) {
+                        // check the last-modified time of this file.
+                        // we are interested in this only it was written to in the
+                        // last 5 minutes or so
+                        final long age = System.currentTimeMillis()
+                                - initialStack.lastModified();
+                        final long FIVE_MINUTES_IN_MILLIS = 1000 * 60 * 5;
+                        if (age < FIVE_MINUTES_IN_MILLIS) {
+                            Slog.e(TAG, "First set of traces taken from "
+                                    + initialStack.getAbsolutePath());
+                            appendFile(watchdogTraces, initialStack);
+                        } else {
+                            Slog.e(TAG, "First set of traces were collected more than "
+                                    + "5 minutes ago, ignoring ...");
+                        }
+                    } else {
+                        Slog.e(TAG, "First set of traces are empty!");
+                    }
+
+                    if (finalStack != null) {
+                        Slog.e(TAG, "Second set of traces taken from "
+                                + finalStack.getAbsolutePath());
+                        appendFile(watchdogTraces, finalStack);
+                    } else {
+                        Slog.e(TAG, "Second set of traces are empty!");
+                    }
+                } else {
+                    Slog.w(TAG, "Unable to create Watchdog dump file: createNewFile failed");
+                }
+            } catch (Exception e) {
+                // catch any exception that happens here;
+                // why kill the system when it is going to die anyways?
+                Slog.e(TAG, "Exception creating Watchdog dump file:", e);
+            }
 
             // Try to add the error to the dropbox, but assuming that the ActivityManager
             // itself may be deadlocked.  (which has happened, causing this statement to
@@ -717,15 +790,33 @@ public class Watchdog {
                         if (mActivity != null) {
                             mActivity.addErrorToDropBox(
                                     "watchdog", null, "system_server", null, null, null,
-                                    null, report.toString(), stack, null, null, null,
+                                    null, report.toString(), finalStack, null, null, null,
                                     errorId);
                         }
                     }
-                };
+            };
             dropboxThread.start();
             try {
                 dropboxThread.join(2000);  // wait up to 2 seconds for it to return.
             } catch (InterruptedException ignored) {}
+
+            // At times, when user space watchdog traces don't give an indication on
+            // which component held a lock, because of which other threads are blocked,
+            // (thereby causing Watchdog), trigger kernel panic
+            boolean crashOnWatchdog = SystemProperties
+                                        .getBoolean("persist.sys.crashOnWatchdog", false);
+            if (crashOnWatchdog) {
+                // Trigger the kernel to dump all blocked threads, and backtraces
+                // on all CPUs to the kernel log
+                Slog.e(TAG, "Triggering SysRq for system_server watchdog");
+                doSysRq('w');
+                doSysRq('l');
+
+                // wait until the above blocked threads be dumped into kernel log
+                SystemClock.sleep(3000);
+
+                doSysRq('c');
+            }
 
             IActivityController controller;
             synchronized (mLock) {
@@ -760,6 +851,13 @@ public class Watchdog {
                 Slog.w(TAG, "*** WATCHDOG KILLING SYSTEM PROCESS: " + subject);
                 WatchdogDiagnostics.diagnoseCheckers(blockedCheckers);
                 Slog.w(TAG, "*** GOODBYE!");
+                if(SmartTraceUtils.isPerfettoDumpEnabled() && dueTime > SystemClock.uptimeMillis()){
+                    long timeDelta = dueTime - SystemClock.uptimeMillis();
+                    // wait until perfetto log to be dumped completely
+                    Slog.i(TAG,"Sleep "+ timeDelta
+                            +" ms to make sure perfetto log to be dumped completely");
+                    SystemClock.sleep(timeDelta);
+                }
                 if (!Build.IS_USER && isCrashLoopFound()
                         && !WatchdogProperties.should_ignore_fatal_count().orElse(false)) {
                     breakCrashLoop();
@@ -883,5 +981,60 @@ public class Watchdog {
             Slog.w(TAG, "Failed to append to kmsg", e);
         }
         doSysRq('c');
+    }
+
+    private void appendFile (File writeTo, File copyFrom) {
+        try {
+            BufferedReader in = new BufferedReader(new FileReader(copyFrom));
+            FileWriter out = new FileWriter(writeTo, true);
+            String line = null;
+
+            // Write line-by-line from "copyFrom" to "writeTo"
+            while ((line = in.readLine()) != null) {
+                out.write(line);
+                out.write('\n');
+            }
+            in.close();
+            out.close();
+        } catch (IOException e) {
+            Slog.e(TAG, "Exception while writing watchdog traces to new file!");
+            e.printStackTrace();
+        }
+    }
+
+    private void binderStateRead() {
+        try {
+            boolean binderfsNodePresent = false;
+            BufferedReader in = null;
+            Slog.i(TAG,"Collecting Binder Transaction Status Information");
+            try {
+                in = new BufferedReader(new FileReader("/dev/binderfs/binder_logs/state"));
+                Slog.i(TAG, "Collecting Binder state file from binderfs");
+                binderfsNodePresent = true;
+            } catch(IOException e) {
+                Slog.i(TAG, "Binderfs node not found, Trying to collect it from debugfs", e);
+            }
+            try {
+                if (binderfsNodePresent == false) {
+                    in = new BufferedReader(new FileReader("/sys/kernel/debug/binder/state"));
+                    Slog.i(TAG, "Collecting Binder state file from debugfs");
+                }
+            } catch(IOException e) {
+                Slog.i(TAG, "Debugfs node not found", e);
+            }
+            FileWriter out = new FileWriter("/data/anr/BinderTraces_pid" +
+                    String.valueOf(Process.myPid()) + ".txt");
+            String line = null;
+
+            // Write line-by-line
+            while ((line = in.readLine()) != null) {
+                out.write(line);
+                out.write('\n');
+            }
+            in.close();
+            out.close();
+        } catch (IOException e) {
+            Slog.w(TAG, "Failed to collect state file", e);
+        }
     }
 }

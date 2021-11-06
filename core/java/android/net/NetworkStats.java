@@ -930,6 +930,7 @@ public final class NetworkStats implements Parcelable {
                 entry.operations += operations[i];
             }
         }
+
         return entry;
     }
 

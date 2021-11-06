@@ -592,6 +592,8 @@ final class LocalDisplayAdapter extends DisplayAdapter {
                 }
 
                 final Resources res = getOverlayContext().getResources();
+                final boolean isBuiltIn = ((mInfo.address) != null) ?
+                   ((((DisplayAddress.Physical) mInfo.address).getPort() & 0x80) == 0x80) : false;
 
                 if (mIsDefaultDisplay) {
                     mInfo.flags |= DisplayDeviceInfo.FLAG_DEFAULT_DISPLAY;
@@ -609,6 +611,26 @@ final class LocalDisplayAdapter extends DisplayAdapter {
                             mInfo.width, mInfo.height);
                     mInfo.roundedCorners = RoundedCorners.fromResources(
                             res, mInfo.width, mInfo.height);
+                } else if (isBuiltIn) {
+                    mInfo.type = Display.TYPE_INTERNAL;
+                    mInfo.touch = DisplayDeviceInfo.TOUCH_INTERNAL;
+                    mInfo.name = getContext().getResources().getString(
+                            com.android.internal.R.string.display_manager_built_in_display_name);
+                    mInfo.flags |= DisplayDeviceInfo.FLAG_ROTATES_WITH_CONTENT;
+
+                    if (SystemProperties.getBoolean(
+                                    "vendor.display.builtin_presentation", false)) {
+                        mInfo.flags |= DisplayDeviceInfo.FLAG_PRESENTATION;
+                    } else {
+                        mInfo.flags |= DisplayDeviceInfo.FLAG_PRIVATE;
+                    }
+
+                    if (!SystemProperties.getBoolean(
+                                    "vendor.display.builtin_mirroring", false)) {
+                        mInfo.flags |= DisplayDeviceInfo.FLAG_OWN_CONTENT_ONLY;
+                    }
+
+                    mInfo.setAssumedDensityForExternalDisplay(mActiveSfDisplayMode.width, mActiveSfDisplayMode.height);
                 } else {
                     if (!res.getBoolean(
                                 com.android.internal.R.bool.config_localDisplaysMirrorContent)) {
@@ -648,11 +670,12 @@ final class LocalDisplayAdapter extends DisplayAdapter {
         public Runnable requestDisplayStateLocked(final int state, final float brightnessState,
                 final float sdrBrightnessState) {
             // Assume that the brightness is off if the display is being turned off.
-            assert state != Display.STATE_OFF
-                    || brightnessState == PowerManager.BRIGHTNESS_OFF_FLOAT;
+            assert state != Display.STATE_OFF || BrightnessSynchronizer.floatEquals(
+                    brightnessState, PowerManager.BRIGHTNESS_OFF_FLOAT);
             final boolean stateChanged = (mState != state);
-            final boolean brightnessChanged = mBrightnessState != brightnessState
-                    || mSdrBrightnessState != sdrBrightnessState;
+            final boolean brightnessChanged =
+                    !(BrightnessSynchronizer.floatEquals(mBrightnessState, brightnessState)
+                    && BrightnessSynchronizer.floatEquals(mSdrBrightnessState, sdrBrightnessState));
             if (stateChanged || brightnessChanged) {
                 final long physicalDisplayId = mPhysicalDisplayId;
                 final IBinder token = getDisplayTokenLocked();
@@ -806,7 +829,8 @@ final class LocalDisplayAdapter extends DisplayAdapter {
                     }
 
                     private float brightnessToBacklight(float brightness) {
-                        if (brightness == PowerManager.BRIGHTNESS_OFF_FLOAT) {
+                        if (BrightnessSynchronizer.floatEquals(
+                                brightness, PowerManager.BRIGHTNESS_OFF_FLOAT)) {
                             return PowerManager.BRIGHTNESS_OFF_FLOAT;
                         } else {
                             return getDisplayDeviceConfig().getBacklightFromBrightness(brightness);

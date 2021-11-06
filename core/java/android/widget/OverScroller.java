@@ -20,10 +20,12 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.hardware.SensorManager;
 import android.os.Build;
+import android.util.BoostFramework.ScrollOptimizer;
 import android.util.Log;
 import android.view.ViewConfiguration;
 import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
+import android.os.SystemProperties;
 
 /**
  * This class encapsulates scrolling with the ability to overshoot the bounds
@@ -162,6 +164,9 @@ public class OverScroller {
      */
     public final void forceFinished(boolean finished) {
         mScrollerX.mFinished = mScrollerY.mFinished = finished;
+        if (finished && mMode == FLING_MODE) {
+            ScrollOptimizer.setFlingFlag(ScrollOptimizer.FLING_END);
+        }
     }
 
     /**
@@ -286,6 +291,9 @@ public class OverScroller {
      */
     public boolean computeScrollOffset() {
         if (isFinished()) {
+            if (mMode == FLING_MODE) {
+                ScrollOptimizer.setFlingFlag(ScrollOptimizer.FLING_END);
+            }
             return false;
         }
 
@@ -323,6 +331,9 @@ public class OverScroller {
                     }
                 }
 
+                if (isFinished()) {
+                    ScrollOptimizer.setFlingFlag(ScrollOptimizer.FLING_END);
+                }
                 break;
         }
 
@@ -432,6 +443,8 @@ public class OverScroller {
             }
         }
 
+        ScrollOptimizer.setFlingFlag(ScrollOptimizer.FLING_START);
+
         mMode = FLING_MODE;
         mScrollerX.fling(startX, velocityX, minX, maxX, overX);
         mScrollerY.fling(startY, velocityY, minY, maxY, overY);
@@ -499,6 +512,9 @@ public class OverScroller {
      * @see #forceFinished(boolean)
      */
     public void abortAnimation() {
+        if (mMode == FLING_MODE) {
+            ScrollOptimizer.setFlingFlag(ScrollOptimizer.FLING_END);
+        }
         mScrollerX.finish();
         mScrollerY.finish();
     }
@@ -529,6 +545,7 @@ public class OverScroller {
 
     static class SplineOverScroller {
         // Initial position
+        private Context mContext;
         private int mStart;
 
         // Current position
@@ -630,6 +647,7 @@ public class OverScroller {
         }
 
         SplineOverScroller(Context context) {
+            mContext = context;
             mFinished = true;
             final float ppi = context.getResources().getDisplayMetrics().density * 160.0f;
             mPhysicalCoeff = SensorManager.GRAVITY_EARTH // g (m/s^2)
@@ -832,7 +850,7 @@ public class OverScroller {
         }
 
         void notifyEdgeReached(int start, int end, int over) {
-            // mState is used to detect successive notifications 
+            // mState is used to detect successive notifications
             if (mState == SPLINE) {
                 mOver = over;
                 mStartTime = AnimationUtils.currentAnimationTimeMillis();
@@ -897,9 +915,10 @@ public class OverScroller {
          */
         boolean update() {
             final long time = AnimationUtils.currentAnimationTimeMillis();
-            final long currentTime = time - mStartTime;
+            final long adjustedTime = ScrollOptimizer.getAdjustedAnimationClock(time);
+            final long currentTime = adjustedTime - mStartTime;
 
-            if (currentTime == 0) {
+            if (currentTime <= 0) {
                 // Skip work but report that we're still going if we have a nonzero duration.
                 return mDuration > 0;
             }
@@ -939,8 +958,8 @@ public class OverScroller {
                     final float t = (float) (currentTime) / mDuration;
                     final float t2 = t * t;
                     final float sign = Math.signum(mVelocity);
-                    distance = sign * mOver * (3.0f * t2 - 2.0f * t * t2); 
-                    mCurrVelocity = sign * mOver * 6.0f * (- t + t2); 
+                    distance = sign * mOver * (3.0f * t2 - 2.0f * t * t2);
+                    mCurrVelocity = sign * mOver * 6.0f * (- t + t2);
                     break;
                 }
             }

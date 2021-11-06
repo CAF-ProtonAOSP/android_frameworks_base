@@ -112,6 +112,7 @@ import com.android.systemui.statusbar.phone.KeyguardBypassController;
 import com.android.systemui.telephony.TelephonyListenerManager;
 import com.android.systemui.util.Assert;
 import com.android.systemui.util.RingerModeTracker;
+import com.android.systemui.keyguard.KeyguardViewMediator;
 
 import com.google.android.collect.Lists;
 
@@ -120,12 +121,9 @@ import java.io.PrintWriter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -471,41 +469,21 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         List<SubscriptionInfo> subscriptionInfos = getSubscriptionInfo(true /* forceReload */);
 
         // Hack level over 9000: Because the subscription id is not yet valid when we see the
-        // first update in handleSimStateChange, we need to force refresh all SIM states
+        // first update in handleSimStateChange, we need to force refresh all all SIM states
         // so the subscription id for them is consistent.
         ArrayList<SubscriptionInfo> changedSubscriptions = new ArrayList<>();
-        Set<Integer> activeSubIds = new HashSet<>();
         for (int i = 0; i < subscriptionInfos.size(); i++) {
             SubscriptionInfo info = subscriptionInfos.get(i);
-            activeSubIds.add(info.getSubscriptionId());
             boolean changed = refreshSimState(info.getSubscriptionId(), info.getSimSlotIndex());
             if (changed) {
                 changedSubscriptions.add(info);
             }
         }
-
-        // It is possible for active subscriptions to become invalid (-1), and these will not be
-        // present in the subscriptionInfo list
-        Iterator<Map.Entry<Integer, SimData>> iter = mSimDatas.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer, SimData> simData = iter.next();
-            if (!activeSubIds.contains(simData.getKey())) {
-                Log.i(TAG, "Previously active sub id " + simData.getKey() + " is now invalid, "
-                        + "will remove");
-                iter.remove();
-
-                SimData data = simData.getValue();
-                for (int j = 0; j < mCallbacks.size(); j++) {
-                    KeyguardUpdateMonitorCallback cb = mCallbacks.get(j).get();
-                    if (cb != null) {
-                        cb.onSimStateChanged(data.subId, data.slotId, data.simState);
-                    }
-                }
-            }
-        }
-
         for (int i = 0; i < changedSubscriptions.size(); i++) {
-            SimData data = mSimDatas.get(changedSubscriptions.get(i).getSubscriptionId());
+            SimData data = mSimDatas.get(changedSubscriptions.get(i).getSimSlotIndex());
+            if (data == null) {
+                continue;
+            }
             for (int j = 0; j < mCallbacks.size(); j++) {
                 KeyguardUpdateMonitorCallback cb = mCallbacks.get(j).get();
                 if (cb != null) {
@@ -1578,11 +1556,12 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
                 state = TelephonyManager.SIM_STATE_NETWORK_LOCKED;
             } else if (Intent.SIM_STATE_CARD_IO_ERROR.equals(stateExtra)) {
                 state = TelephonyManager.SIM_STATE_CARD_IO_ERROR;
-            } else if (Intent.SIM_STATE_LOADED.equals(stateExtra)
-                    || Intent.SIM_STATE_IMSI.equals(stateExtra)) {
+            } else if (Intent.SIM_STATE_IMSI.equals(stateExtra)) {
                 // This is required because telephony doesn't return to "READY" after
                 // these state transitions. See bug 7197471.
                 state = TelephonyManager.SIM_STATE_READY;
+            } else if (Intent.SIM_STATE_LOADED.equals(stateExtra)) {
+                state = TelephonyManager.SIM_STATE_LOADED;
             } else {
                 state = TelephonyManager.SIM_STATE_UNKNOWN;
             }
@@ -2832,11 +2811,11 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
             }
         }
 
-        SimData data = mSimDatas.get(subId);
+        SimData data = mSimDatas.get(slotId);
         final boolean changed;
         if (data == null) {
             data = new SimData(state, slotId, subId);
-            mSimDatas.put(subId, data);
+            mSimDatas.put(slotId, data);
             changed = true; // no data yet; force update
         } else {
             changed = (data.simState != state || data.subId != subId || data.slotId != slotId);
@@ -2866,6 +2845,12 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             Log.w(TAG, "invalid subId in handleServiceStateChange()");
+            for (int j = 0; j < mCallbacks.size(); j++) {
+                KeyguardUpdateMonitorCallback cb = mCallbacks.get(j).get();
+                if (cb != null) {
+                    cb.onServiceStateChanged(subId, serviceState);
+                }
+            }
             return;
         } else {
             updateTelephonyCapable(true);
@@ -2873,7 +2858,17 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
         mServiceStates.put(subId, serviceState);
 
-        callbacksRefreshCarrierInfo();
+        // The upstream method (callbacksRefreshCarrierInfo) does not subId or
+        // serviceState as input. Thus onServiceStateChanged cannot be called
+        // from that new method. For now, re-use the same logic as before here
+        // instead of a call to callbacksRefreshCarrierInfo.
+        for (int j = 0; j < mCallbacks.size(); j++) {
+            KeyguardUpdateMonitorCallback cb = mCallbacks.get(j).get();
+            if (cb != null) {
+                cb.onRefreshCarrierInfo();
+                cb.onServiceStateChanged(subId, serviceState);
+            }
+        }
     }
 
     public boolean isKeyguardVisible() {
@@ -3191,18 +3186,20 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
     }
 
     public int getSimState(int subId) {
-        if (mSimDatas.containsKey(subId)) {
-            return mSimDatas.get(subId).simState;
+        int slotId = SubscriptionManager.getSlotIndex(subId);
+        if (mSimDatas.containsKey(slotId)) {
+            return mSimDatas.get(slotId).simState;
         } else {
             return TelephonyManager.SIM_STATE_UNKNOWN;
         }
     }
 
     private int getSlotId(int subId) {
-        if (!mSimDatas.containsKey(subId)) {
-            refreshSimState(subId, SubscriptionManager.getSlotIndex(subId));
+        int slotId = SubscriptionManager.getSlotIndex(subId);
+        if (!mSimDatas.containsKey(slotId)) {
+            refreshSimState(subId, slotId);
         }
-        return mSimDatas.get(subId).slotId;
+        return mSimDatas.get(slotId).slotId;
     }
 
     private final TaskStackChangeListener
@@ -3231,15 +3228,16 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
                 (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         int state = (tele != null) ?
                 tele.getSimState(slotId) : TelephonyManager.SIM_STATE_UNKNOWN;
-        SimData data = mSimDatas.get(subId);
+        SimData data = mSimDatas.get(slotId);
         final boolean changed;
         if (data == null) {
             data = new SimData(state, slotId, subId);
-            mSimDatas.put(subId, data);
+            mSimDatas.put(slotId, data);
             changed = true; // no data yet; force update
         } else {
-            changed = data.simState != state;
+            changed = (data.simState != state) || (data.slotId != slotId);
             data.simState = state;
+            data.slotId = slotId;
         }
         return changed;
     }
@@ -3337,6 +3335,28 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         return resultId;
     }
 
+
+    /**
+     * Find the Unlocked SubscriptionId for a SIM in the given state,
+     * @param state
+     * @return subid or {@link SubscriptionManager#INVALID_SUBSCRIPTION_ID} if none found
+     */
+    public int getUnlockedSubIdForState(int state) {
+        List<SubscriptionInfo> list = getSubscriptionInfo(false /* forceReload */);
+        int resultId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        for (int i = 0; i < list.size(); i++) {
+            final SubscriptionInfo info = list.get(i);
+            final int id = info.getSubscriptionId();
+            int slotId = SubscriptionManager.getSlotIndex(id);
+            if (state == getSimState(id) && (KeyguardViewMediator.getUnlockTrackSimState(slotId)
+                    != TelephonyManager.SIM_STATE_READY)) {
+                resultId = id;
+                break;
+            }
+        }
+        return resultId;
+    }
+
     public SubscriptionInfo getSubscriptionInfoForSubId(int subId) {
         List<SubscriptionInfo> list = getSubscriptionInfo(false /* forceReload */);
         for (int i = 0; i < list.size(); i++) {
@@ -3405,6 +3425,34 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         mTrustManager.unregisterTrustListener(this);
 
         mHandler.removeCallbacksAndMessages(null);
+    }
+
+    public boolean isOOS() {
+        boolean ret = true;
+        int phoneCount = mTelephonyManager.getActiveModemCount();
+        for (int phoneId = 0; phoneId < phoneCount; phoneId++) {
+            int[] subId = mSubscriptionManager.getSubscriptionIds(phoneId);
+            if (subId != null && subId.length >= 1) {
+                if (DEBUG) Log.d(TAG, "slot id:" + phoneId + " subId:" + subId[0]);
+                ServiceState state = mServiceStates.get(subId[0]);
+                if (state != null) {
+                    if (state.isEmergencyOnly()) {
+                        ret = false;
+                    } else if ((state.getVoiceRegState() != ServiceState.STATE_OUT_OF_SERVICE)
+                            && (state.getVoiceRegState() != ServiceState.STATE_POWER_OFF)) {
+                        ret = false;
+                    }
+                    if (DEBUG) {
+                        Log.d(TAG, "is emergency: " + state.isEmergencyOnly()
+                                + "voice state: " + state.getVoiceRegState());
+                    }
+                } else {
+                    if (DEBUG) Log.d(TAG, "state is NULL");
+                }
+            }
+        }
+
+        return ret;
     }
 
     @Override

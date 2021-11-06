@@ -19,6 +19,7 @@ package android.telephony;
 import android.annotation.IntDef;
 import android.annotation.SystemApi;
 import android.hardware.radio.V1_5.AccessNetwork;
+import android.hardware.radio.V1_5.RadioAccessNetworks;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -107,6 +108,28 @@ public final class AccessNetworkConstants {
                 case NGRAN: return "NGRAN";
                 default: return Integer.toString(type);
             }
+        }
+
+        /**
+         * Converts from RadioAccessNetworks in HAL to AccessNetworkType in frameworks.
+         * @hide
+         */
+        public static int convertRanToAnt(int ran) {
+            switch (ran) {
+                case RadioAccessNetworks.GERAN:
+                    return AccessNetworkType.GERAN;
+                case RadioAccessNetworks.UTRAN:
+                    return AccessNetworkType.UTRAN;
+                case RadioAccessNetworks.EUTRAN:
+                    return AccessNetworkType.EUTRAN;
+                case RadioAccessNetworks.NGRAN:
+                    return AccessNetworkType.NGRAN;
+                case RadioAccessNetworks.CDMA2000:
+                    return AccessNetworkType.CDMA2000;
+                case RadioAccessNetworks.UNKNOWN:
+                default:
+                    return AccessNetworkType.UNKNOWN;
+           }
         }
     }
 

@@ -44,6 +44,11 @@ public class TelephonyIcons {
     public static final int ICON_5G = R.drawable.ic_5g_mobiledata;
     public static final int ICON_5G_PLUS = R.drawable.ic_5g_plus_mobiledata;
     public static final int ICON_CWF = R.drawable.ic_carrier_wifi;
+    public static final int ICON_5G_SA = R.drawable.ic_5g_mobiledata;
+    public static final int ICON_5G_BASIC = R.drawable.ic_5g_mobiledata;
+    public static final int ICON_5G_UWB = R.drawable.ic_5g_uwb_mobiledata;
+    public static final int ICON_VOWIFI = R.drawable.ic_vowifi;
+    public static final int ICON_VOWIFI_CALLING = R.drawable.ic_vowifi_calling;
 
     public static final MobileIconGroup CARRIER_NETWORK_CHANGE = new MobileIconGroup(
             "CARRIER_NETWORK_CHANGE",
@@ -293,6 +298,84 @@ public class TelephonyIcons {
 
     // When adding a new MobileIconGround, check if the dataContentDescription has to be filtered
     // in QSCarrier#hasValidTypeContentDescription
+    //
+    public static final MobileIconGroup FIVE_G = new MobileIconGroup(
+            "5G",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            R.string.data_connection_5g,
+            TelephonyIcons.ICON_5G,
+            false);
+
+    public static final MobileIconGroup FIVE_G_BASIC = new MobileIconGroup(
+            "5GBasic",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            R.string.data_connection_5g_basic,
+            TelephonyIcons.ICON_5G_BASIC,
+            false);
+
+    public static final MobileIconGroup FIVE_G_UWB = new MobileIconGroup(
+            "5GUWB",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            R.string.data_connection_5g_uwb,
+            TelephonyIcons.ICON_5G_UWB,
+            false);
+
+    public static final MobileIconGroup FIVE_G_SA = new MobileIconGroup(
+            "5GSA",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            R.string.data_connection_5g_sa,
+            TelephonyIcons.ICON_5G_SA,
+            false);
+
+    public static final MobileIconGroup VOWIFI = new MobileIconGroup(
+            "VoWIFI",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            0,
+            TelephonyIcons.ICON_VOWIFI,
+            false);
+
+    public static final MobileIconGroup VOWIFI_CALLING = new MobileIconGroup(
+            "VoWIFICall",
+            null,
+            null,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH,
+            0, 0,
+            0,
+            0,
+            AccessibilityContentDescriptions.PHONE_SIGNAL_STRENGTH[0],
+            0,
+            TelephonyIcons.ICON_VOWIFI_CALLING,
+            false);
 
     /** Mapping icon name(lower case) to the icon object. */
     public static final Map<String, MobileIconGroup> ICON_NAME_TO_ICON;
@@ -314,6 +397,7 @@ public class TelephonyIcons {
         ICON_NAME_TO_ICON.put("lte+", LTE_PLUS);
         ICON_NAME_TO_ICON.put("5g", NR_5G);
         ICON_NAME_TO_ICON.put("5g_plus", NR_5G_PLUS);
+        ICON_NAME_TO_ICON.put("5guwb", FIVE_G_UWB);
         ICON_NAME_TO_ICON.put("datadisable", DATA_DISABLED);
         ICON_NAME_TO_ICON.put("notdefaultdata", NOT_DEFAULT_DATA);
     }

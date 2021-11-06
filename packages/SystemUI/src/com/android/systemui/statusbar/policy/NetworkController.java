@@ -100,6 +100,7 @@ public interface NetworkController extends CallbackController<SignalCallback>, D
         public int qsType;
         public boolean activityIn;
         public boolean activityOut;
+        public int volteIcon;
         public CharSequence typeContentDescription;
         public CharSequence typeContentDescriptionHtml;
         public CharSequence description;
@@ -110,7 +111,7 @@ public interface NetworkController extends CallbackController<SignalCallback>, D
         public boolean isDefault;
 
         public MobileDataIndicators(IconState statusIcon, IconState qsIcon, int statusType,
-                int qsType, boolean activityIn, boolean activityOut,
+                int qsType, boolean activityIn, boolean activityOut, int volteIcon,
                 CharSequence typeContentDescription, CharSequence typeContentDescriptionHtml,
                 CharSequence description, boolean isWide, int subId, boolean roaming,
                 boolean showTriangle, boolean isDefault) {
@@ -120,6 +121,7 @@ public interface NetworkController extends CallbackController<SignalCallback>, D
             this.qsType = qsType;
             this.activityIn = activityIn;
             this.activityOut = activityOut;
+            this.volteIcon = volteIcon;
             this.typeContentDescription = typeContentDescription;
             this.typeContentDescriptionHtml = typeContentDescriptionHtml;
             this.description = description;
@@ -139,6 +141,7 @@ public interface NetworkController extends CallbackController<SignalCallback>, D
                 .append(",qsType=").append(qsType)
                 .append(",activityIn=").append(activityIn)
                 .append(",activityOut=").append(activityOut)
+                .append(",volteIcon=").append(volteIcon)
                 .append(",typeContentDescription=").append(typeContentDescription)
                 .append(",typeContentDescriptionHtml=").append(typeContentDescriptionHtml)
                 .append(",description=").append(description)

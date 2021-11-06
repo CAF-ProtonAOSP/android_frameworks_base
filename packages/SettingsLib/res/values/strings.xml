@@ -36,6 +36,8 @@
     <string name="wifi_security_short_eap_wpa" translatable="false">WPA-EAP</string>
     <!-- Do not translate.  Concise terminology for wifi with WPA2/WPA3 802.1x EAP security -->
     <string name="wifi_security_short_eap_wpa2_wpa3" translatable="false">RSN-EAP</string>
+    <!-- Do not translate.  Concise terminology for wifi with DPP security -->
+    <string name="wifi_security_short_dpp" translatable="false">DPP</string>
     <!-- Do not translate.  Concise terminology for wifi with WPA3 security -->
     <string name="wifi_security_short_sae" translatable="false">WPA3</string>
     <!-- Do not translate.  Concise terminology for wifi with WPA2/WPA3 transition security -->
@@ -72,6 +74,8 @@
     <string name="wifi_security_eap_wpa3" translatable="false">WPA3-Enterprise</string>
     <!-- Do not translate.  Concise terminology for Passpoint network -->
     <string name="wifi_security_passpoint" translatable="false">Passpoint</string>
+    <!-- Do not translate.  Concise terminology for DPP network -->
+    <string name="wifi_security_dpp" translatable="false">DPP</string>
     <!-- Do not translate.  Terminology for wifi with WPA3 security -->
     <string name="wifi_security_sae" translatable="false">WPA3-Personal</string>
     <!-- Do not translate.  Terminology for wifi with WPA2/WPA3 Transition mode security -->
@@ -234,6 +238,8 @@
     <string name="bluetooth_profile_headset">Phone calls</string>
     <!-- Bluetooth settings.  The user-visible string that is used whenever referring to the OPP profile. -->
     <string name="bluetooth_profile_opp">File transfer</string>
+    <!-- Bluetooth settings.  The user-visible string that is used whenever referring to the Broadcast profile. -->
+    <string name="bluetooth_profile_broadcast">Broadcast</string>
     <!-- Bluetooth settings. The user-visible string that is used whenever referring to the HID profile. -->
     <string name="bluetooth_profile_hid">Input device</string>
     <!-- Bluetooth settings. The user-visible string that is used whenever referring to the PAN profile (accessing Internet through remote device). [CHAR LIMIT=40] -->
@@ -248,6 +254,11 @@
     <string name="bluetooth_profile_map">Text Messages</string>
     <!-- Bluetooth settings. The user-visible string that is used whenever referring to the SAP profile (sharing SIM card). -->
     <string name="bluetooth_profile_sap">SIM Access</string>
+    <!-- Bluetooth settings. The user-visible string that is used whenever referring to the dun profile. -->
+    <string name="bluetooth_profile_dun">Dial-up Network Access</string>
+    <!-- Bluetooth settings. The user-visible string that is used
+         whenever referring to the vcp profile. -->
+    <string name="bluetooth_profile_vcp">Volume control</string>
 
     <!-- Bluetooth settings. The user-visible string for the setting controlling whether to use a high-quality codec if the device supports it, along with the name of the codec (eg AAC, LDAC, aptX) -->
     <string name="bluetooth_profile_a2dp_high_quality">HD audio: <xliff:g id="codec_name">%1$s</xliff:g></string>
@@ -278,6 +289,8 @@
     <string name="bluetooth_pan_user_profile_summary_connected">Connected to device for internet access</string>
     <!-- Bluetooth settings. Connection options screen. The summary for the checkbox preference when PAN is connected (NAP role). [CHAR LIMIT=25]-->
     <string name="bluetooth_pan_nap_profile_summary_connected">Sharing local internet connection with device</string>
+    <!-- Bluetooth settings.  Connection options screen.  The summary for the DUN checkbox preference when DUN is connected. -->
+    <string name="bluetooth_dun_profile_summary_connected">Connected to Dun Server</string>
 
     <!-- Bluetooth settings. Connection options screen. The summary
          for the PAN checkbox preference that describes how checking it
@@ -299,6 +312,8 @@
     <string name="bluetooth_hid_profile_summary_use_for">Use for input</string>
     <!-- Bluetooth settings.  Connection options screen.  The summary for the Hearing Aid checkbox preference that describes how checking it will set the Hearing Aid profile as preferred. -->
     <string name="bluetooth_hearing_aid_profile_summary_use_for">Use for Hearing Aids</string>
+    <!-- Bluetooth settings. Connection options screen.  The summary for the dun checkbox preference that describes how checking it will set the dun profile as preferred. -->
+    <string name="bluetooth_dun_profile_summary_use_for">Use for Dial-up Network access</string>
 
     <!-- Button text for accepting an incoming pairing request. [CHAR LIMIT=20] -->
     <string name="bluetooth_pairing_accept">Pair</string>
@@ -331,6 +346,9 @@
 
     <!-- Message for telling the user the kind of BT device being displayed in list. [CHAR LIMIT=30 BACKUP_MESSAGE_ID=551146170554589119] -->
     <string name="bluetooth_talkback_imaging">Imaging</string>
+
+    <!-- Message for telling the user the kind of BT device being displayed. [CHAR LIMIT=30] -->
+    <string name="bluetooth_talkback_group">Group Devices</string>
 
     <!-- Message for telling the user the kind of BT device being displayed in list. [CHAR LIMIT=30 BACKUP_MESSAGE_ID=26580326066627664] -->
     <string name="bluetooth_talkback_headphone">Headphone</string>
@@ -649,6 +667,8 @@
 
     <!-- Setting Checkbox title whether to show options for wireless display certification -->
     <string name="wifi_display_certification">Wireless display certification</string>
+    <!-- Setting Checkbox title whether to enable WiFi coverage extending feature. -->
+    <string name="wifi_coverage_extend">Enable Wi\u2011Fi Coverage Extend Feature</string>
     <!-- Setting Checkbox title whether to enable WiFi Verbose Logging. [CHAR LIMIT=40] -->
     <string name="wifi_verbose_logging">Enable Wi\u2011Fi Verbose Logging</string>
     <!-- Setting Checkbox title whether to disable WiFi Scan Throttling. [CHAR LIMIT=40] -->
@@ -657,6 +677,8 @@
     <string name="wifi_enhanced_mac_randomization">Wi\u2011Fi non\u2011persistent MAC randomization</string>
     <!-- Setting Checkbox title whether to always keep mobile data active. [CHAR LIMIT=80] -->
     <string name="mobile_data_always_on">Mobile data always active</string>
+    <!-- Setting Checkbox title whether to allow smart DDS switch. [CHAR LIMIT=80] -->
+    <string name="smart_dds_switch">Smart DDS switch</string>
     <!-- Setting Checkbox title whether to enable hardware acceleration for tethering. [CHAR LIMIT=80] -->
     <string name="tethering_hardware_offload">Tethering hardware acceleration</string>
     <!-- Setting Checkbox title for showing Bluetooth devices without names -->
@@ -719,6 +741,9 @@
     <!-- setting Checkbox summary whether to show options for wireless display certification  -->
     <string name="wifi_display_certification_summary">Show options for wireless display certification</string>
     <!-- Setting Checkbox summary whether to enable Wifi verbose Logging [CHAR_LIMIT=NONE] -->
+    <!-- Setting Checkbox summary whether to enable WiFi coverage extending feature. -->
+    <string name="wifi_coverage_extend_summary">Enable extending Wi\u2011Fi coverage using Hotspot</string>
+    <!-- Setting Checkbox summary whether to enable Wifi verbose Logging [CHAR LIMIT=80] -->
     <string name="wifi_verbose_logging_summary">Increase Wi\u2011Fi logging level, show per SSID RSSI in Wi\u2011Fi Picker</string>
     <!-- Setting Checkbox summary whether to disable Wifi scan throttling [CHAR LIMIT=NONE] -->
     <string name="wifi_scan_throttling_summary">Reduces battery drain &amp; improves network performance</string>
@@ -751,6 +776,7 @@
     <!-- Setting Checkbox title whether to enable view attribute inspection -->
     <string name="debug_view_attributes">Enable view attribute inspection</string>
     <string name="mobile_data_always_on_summary">Always keep mobile data active, even when Wi\u2011Fi is active (for fast network switching).</string>
+    <string name="smart_dds_switch_summary">Allow modem to intelligently switch the DDS.</string>
     <string name="tethering_hardware_offload_summary">Use tethering hardware acceleration if available</string>
     <!-- Title of warning dialog about the implications of enabling USB debugging -->
     <string name="adb_warning_title">Allow USB debugging?</string>

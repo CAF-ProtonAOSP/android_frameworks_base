@@ -526,6 +526,7 @@ public class PackageInstallerService extends IPackageInstaller.Stub implements
     private int createSessionInternal(SessionParams params, String installerPackageName,
             String installerAttributionTag, int userId)
             throws IOException {
+        android.util.SeempLog.record(90);
         final int callingUid = Binder.getCallingUid();
         mPm.enforceCrossUserPermission(
                 callingUid, userId, true, true, "createSession");

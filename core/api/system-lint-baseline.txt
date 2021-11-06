@@ -1,4 +1,8 @@
 // Baseline format: 1.0
+AcronymName: android.telephony.ims.stub.ImsUtImplBase#queryCFForServiceClass(int, String, int):
+    Acronyms should not be capitalized in method names: was `queryCFForServiceClass`, should this be `queryCfForServiceClass`?
+
+
 ArrayReturn: android.view.contentcapture.ViewNode#getAutofillOptions():
 
 
@@ -80,6 +84,9 @@ MissingNullability: android.telephony.SubscriptionPlan.Builder#createRecurringMo
 MissingNullability: android.telephony.SubscriptionPlan.Builder#createRecurringWeekly(java.time.ZonedDateTime) parameter #0:
 
 MissingNullability: android.telephony.data.DataService#onUnbind(android.content.Intent) parameter #0:
+
+MissingNullability: android.telephony.ims.stub.ImsUtImplBase#queryCFForServiceClass(int, String, int) parameter #1:
+    Missing nullability on parameter `number` in method `queryCFForServiceClass`
 
 MissingNullability: android.telephony.mbms.DownloadRequest.Builder#setServiceId(String):
 

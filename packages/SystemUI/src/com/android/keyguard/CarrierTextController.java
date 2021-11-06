@@ -16,6 +16,8 @@
 
 package com.android.keyguard;
 
+import android.telephony.TelephonyManager;
+
 import com.android.systemui.util.ViewController;
 
 import javax.inject.Inject;

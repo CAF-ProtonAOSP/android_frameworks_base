@@ -401,6 +401,7 @@ public class SpeechRecognizer {
      */
     @MainThread
     public void startListening(final Intent recognizerIntent) {
+        android.util.SeempLog.record(72);
         if (recognizerIntent == null) {
             throw new IllegalArgumentException("intent must not be null");
         }
