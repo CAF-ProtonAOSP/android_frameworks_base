@@ -5330,11 +5330,8 @@ public final class Settings {
             PRIVATE_SETTINGS.add(SHOW_BATTERY_PERCENT);
             PRIVATE_SETTINGS.add(DISPLAY_COLOR_MODE);
             PRIVATE_SETTINGS.add(DISPLAY_COLOR_MODE_VENDOR_HINT);
-<<<<<<< HEAD
             PRIVATE_SETTINGS.add(CALL_CONNECTED_TONE_ENABLED);
-=======
             PRIVATE_SETTINGS.add(POCKET_JUDGE);
->>>>>>> 43b5c9b22e0c... pocket: introduce pocket judge
         }
 
         /**
