@@ -712,7 +712,7 @@ public class Watchdog {
                 SmartTraceUtils.dumpStackTraces(Process.myPid(), pids, nativePids, finalStack);
             }
             //Collect Binder State logs to get status of all the transactions
-            if (Build.IS_DEBUGGABLE) {
+            if (Build.IS_ENG) {
                 binderStateRead();
             }
 
