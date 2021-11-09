@@ -35,12 +35,24 @@ public class PixelPropsUtils {
     private static final Map<String, Object> propsToChange;
     private static final Map<String, ArrayList<String>> propsToKeep;
     private static final String[] extraPackagesToChange = {
+        "com.google.android.apps.nexuslauncher",
+        "com.google.android.soundpicker",
+        "com.google.intelligence.sense",
+        "com.google.pixel.dynamicwallpapers",
         "com.android.vending",
         "com.breel.wallpapers20",
         "com.amazon.avod.thirdpartyclient",
         "com.disney.disneyplus",
         "com.netflix.mediaclient",
-        "in.startv.hotstar"
+        "in.startv.hotstar",
+        "com.google.android.as",
+        "com.google.android.dialer",
+        "com.google.android.apps.safetyhub",
+        "com.google.android.apps.turbo",
+        "com.google.android.apps.wallpaper",
+        "com.google.android.apps.maps",
+        "com.google.android.gms",
+        "com.google.android.apps.customization.pixel",
     };
 
     static {
