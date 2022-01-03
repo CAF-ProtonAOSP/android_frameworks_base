@@ -290,27 +290,27 @@ public enum ScrimState {
             mAnimateChange = !mLaunchingAffordanceWithPreview;
 
             mFrontTint = Color.TRANSPARENT;
-            mBehindTint = Color.BLACK;
-            mBubbleTint = Color.BLACK;
+            mBehindTint = Color.TRANSPARENT;
+            mBubbleTint = Color.TRANSPARENT;
             mBlankScreen = false;
 
             if (previousState == ScrimState.AOD) {
                 // Set all scrims black, before they fade transparent.
                 updateScrimColor(mScrimInFront, 1f /* alpha */, Color.BLACK /* tint */);
-                updateScrimColor(mScrimBehind, 1f /* alpha */, Color.BLACK /* tint */);
+                updateScrimColor(mScrimBehind, 1f /* alpha */, Color.TRANSPARENT /* tint */);
                 if (mScrimForBubble != null) {
                     updateScrimColor(mScrimForBubble, 1f /* alpha */, Color.BLACK /* tint */);
                 }
 
                 // Scrims should still be black at the end of the transition.
                 mFrontTint = Color.BLACK;
-                mBehindTint = Color.BLACK;
+                mBehindTint = Color.TRANSPARENT;
                 mBubbleTint = Color.BLACK;
                 mBlankScreen = true;
             }
 
             if (mClipQsScrim) {
-                updateScrimColor(mScrimBehind, 1f /* alpha */, Color.BLACK);
+                updateScrimColor(mScrimBehind, 1f /* alpha */, Color.TRANSPARENT);
             }
 
             mAnimationDuration = ScrimController.ANIMATION_DURATION;
