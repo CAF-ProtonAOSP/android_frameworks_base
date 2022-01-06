@@ -148,19 +148,6 @@ public class UdfpsEnrollHelper {
             }
         }
 
-        if (mTotalSteps == -1) {
-            mTotalSteps = remaining;
-
-            // Allocate (or subtract) any extra steps for the first enroll stage.
-            final int extraSteps = mTotalSteps - getLastStageThreshold();
-            if (extraSteps != 0) {
-                for (int stageIndex = 0; stageIndex < ENROLL_STAGE_COUNT; stageIndex++) {
-                    STAGE_THRESHOLDS[stageIndex] =
-                            Math.max(0, STAGE_THRESHOLDS[stageIndex] + extraSteps);
-                }
-            }
-        }
-
         mRemainingSteps = remaining;
 
         if (mListener != null) {
